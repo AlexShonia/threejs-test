@@ -21,6 +21,10 @@ const direction = new THREE.Vector3();
 const vertex = new THREE.Vector3();
 const color = new THREE.Color();
 
+const worldWidth = 256,
+	worldDepth = 256;
+let aspectRatio;
+
 init();
 animate();
 
@@ -133,7 +137,7 @@ function init() {
 
 	// floor
 
-	let floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
+	let floorGeometry = new THREE.PlaneGeometry(2000, 2000, 10, 10);
 	floorGeometry.rotateX(-Math.PI / 2);
 
 	// vertex displacement
@@ -143,9 +147,9 @@ function init() {
 	for (let i = 0, l = position.count; i < l; i++) {
 		vertex.fromBufferAttribute(position, i);
 
-		vertex.x += 0;
-		vertex.y += 0;
-		vertex.z += 0;
+		vertex.x += Math.random() * 20 - 10;
+		vertex.y += Math.random() * 60;
+		vertex.z += Math.random() * 20 - 10;
 
 		position.setXYZ(i, vertex.x, vertex.y, vertex.z);
 	}
@@ -229,14 +233,15 @@ function init() {
 		objects.push(box);
 	}
 
-	//
-
+	aspectRatio = 0.666666;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.setPixelRatio(window.devicePixelRatio);
-	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.setSize(
+		window.innerWidth / aspectRatio,
+		window.innerHeight / aspectRatio,
+		false
+	);
 	document.body.appendChild(renderer.domElement);
-
-	//
 
 	window.addEventListener("resize", onWindowResize);
 }
@@ -245,29 +250,35 @@ function onWindowResize() {
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
 
-	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.setSize(
+		window.innerWidth / aspectRatio,
+		window.innerHeight / aspectRatio,
+		false
+	);
 }
 var pointer = new THREE.Vector2();
 
-// document.addEventListener(
-// 	"mousedown",
-// 	function (event) {
-// 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-// 		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-// 		console.log(pointer);
+document.addEventListener(
+	"mousedown",
+	function (event) {
+		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		console.log(pointer);
 
-// 		mraycaster.setFromCamera(pointer, camera);
-// 		var intersects = mraycaster.intersectObjects(objects);
-// 			var marrow = new THREE.ArrowHelper(
-// 				mraycaster.ray.direction,
-// 				mraycaster.ray.origin,
-// 				8,
-// 				0xff0000
-// 			);
-// 			scene.add(marrow);
-// 	},
-// 	false
-// );
+		mraycaster.setFromCamera(pointer, camera);
+		var intersects = mraycaster.intersectObjects(scene.children);
+		if (intersects.length > 0) {
+			var marrow = new THREE.ArrowHelper(
+				mraycaster.ray.direction,
+				mraycaster.ray.origin,
+				8,
+				0xff0000
+			);
+			scene.add(marrow);
+		}
+	},
+	false
+);
 
 function animate() {
 	requestAnimationFrame(animate);
@@ -278,8 +289,15 @@ function animate() {
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
 
-		const intersections = raycaster.intersectObjects(objects, false);
+		const intersections = raycaster.intersectObjects(scene.children, false);
 
+		// let arrow = new THREE.ArrowHelper(
+		// 	raycaster.ray.direction,
+		// 	raycaster.ray.origin,
+		// 	8,
+		// 	0xff0000
+		// );
+		// scene.add(arrow);
 		const onObject = intersections.length > 0;
 
 		const delta = (time - prevTime) / 1000;
@@ -318,4 +336,33 @@ function animate() {
 	prevTime = time;
 
 	renderer.render(scene, camera);
+}
+
+function generateHeight(width, height) {
+	let seed = Math.PI / 4;
+	window.Math.random = function () {
+		const x = Math.sin(seed++) * 10000;
+		return x - Math.floor(x);
+	};
+
+	const size = width * height,
+		data = new Uint8Array(size);
+	const perlin = new ImprovedNoise(),
+		z = Math.random() * 100;
+
+	let quality = 1;
+
+	for (let j = 0; j < 4; j++) {
+		for (let i = 0; i < size; i++) {
+			const x = i % width,
+				y = ~~(i / width);
+			data[i] += Math.abs(
+				perlin.noise(x / quality, y / quality, z) * quality * 1.75
+			);
+		}
+
+		quality *= 5;
+	}
+
+	return data;
 }
