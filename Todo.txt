@@ -2,4 +2,5 @@
 + add terrain
 + fix movement on terrain
 + add fps counter
-Add trees
++ Add trees
+model your tree

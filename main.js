@@ -3,10 +3,13 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { ImprovedNoise } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
+import { GLTFLoader } from "three/examples/jsm/Addons.js";
 
 let camera, scene, renderer, controls, stats;
+let floor;
 
 const objects = [];
+const trees = [];
 
 let raycaster;
 let mraycaster;
@@ -39,13 +42,13 @@ function init() {
 		1,
 		8000
 	);
-	camera.position.y = 10;
+	camera.position.y = 1000;
 
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0xcfe2f3);
 	scene.fog = new THREE.Fog(0xcfe2f3, 0, 7050);
 
-	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.5);
+	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 4.5);
 	light.position.set(0.5, 1, 0.75);
 	scene.add(light);
 
@@ -189,8 +192,8 @@ function init() {
 		"color",
 		new THREE.Float32BufferAttribute(colorsFloor, 3)
 	);
-	const loader = new THREE.TextureLoader();
-	loader.load("textures/grass.png", function (texture) {
+	const textureLoader = new THREE.TextureLoader();
+	textureLoader.load("textures/grass.png", function (texture) {
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
 		texture.repeat.set(100, 100);
@@ -199,8 +202,45 @@ function init() {
 			map: texture,
 		});
 
-		const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+		floor = new THREE.Mesh(floorGeometry, floorMaterial);
 		scene.add(floor);
+	});
+	// trees
+	const modelLoader = new GLTFLoader();
+	modelLoader.load("/models/palm_tree/scene.gltf", function (treeModel) {
+		const numberOfTrees = 50;
+		for (let i = 0; i < numberOfTrees; i++) {
+			const tree = treeModel.scene.clone();
+			tree.position.x = (Math.random() * 30 - 12) * 30;
+			tree.position.z = (Math.random() * 30 - 12) * 30;
+			tree.position.y = 1300;
+			tree.scale.x = 10;
+			tree.scale.y = 10;
+			tree.scale.z = 10;
+			scene.add(tree);
+			trees.push(tree);
+		}
+
+		const treeRaycaster = new THREE.Raycaster();
+		let toGround = new THREE.Vector3(0, -1, 0);
+
+		for (let i = 0; i < numberOfTrees; i++) {
+			const treePos = trees[i].position;
+
+			treeRaycaster.set(treePos, toGround);
+			const grIntersect = treeRaycaster.intersectObject(floor);
+			if (grIntersect.length > 0) {
+				trees[i].position.y -= grIntersect[0].distance + 5;
+			}
+
+			// const arr = new THREE.ArrowHelper(
+			// 	treeRaycaster.ray.direction,
+			// 	treeRaycaster.ray.origin,
+			// 	8,
+			// 	0xff0000
+			// );
+			// scene.add(arr);
+		}
 	});
 
 	// objects
@@ -310,6 +350,7 @@ function animate() {
 		if (intersections[0]) {
 			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
 		}
+		// console.log(controls.getObject().position.y);
 		// let arrow = new THREE.ArrowHelper(
 		// 	raycaster.ray.direction,
 		// 	raycaster.ray.origin,
