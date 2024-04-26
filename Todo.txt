@@ -1,0 +1,5 @@
++ Understand whats goin on
++ add terrain
++ fix movement on terrain
++ add fps counter
+Add trees

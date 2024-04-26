@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { ImprovedNoise } from "three/examples/jsm/Addons.js";
+import Stats from "three/examples/jsm/libs/stats.module.js";
 
-let camera, scene, renderer, controls;
+let camera, scene, renderer, controls, stats;
 
 const objects = [];
 
@@ -21,25 +23,27 @@ const direction = new THREE.Vector3();
 const vertex = new THREE.Vector3();
 const color = new THREE.Color();
 
-const worldWidth = 256,
-	worldDepth = 256;
+const worldWidth = 156,
+	worldDepth = 156;
 let aspectRatio;
 
 init();
 animate();
 
 function init() {
+	stats = new Stats();
+	document.body.appendChild(stats.dom);
 	camera = new THREE.PerspectiveCamera(
-		75,
+		90,
 		window.innerWidth / window.innerHeight,
 		1,
-		1000
+		8000
 	);
 	camera.position.y = 10;
 
 	scene = new THREE.Scene();
 	scene.background = new THREE.Color(0xcfe2f3);
-	scene.fog = new THREE.Fog(0xcfe2f3, 0, 750);
+	scene.fog = new THREE.Fog(0xcfe2f3, 0, 7050);
 
 	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.5);
 	light.position.set(0.5, 1, 0.75);
@@ -89,7 +93,7 @@ function init() {
 				break;
 
 			case "Space":
-				if (canJump === true) velocity.y += 350;
+				velocity.y += 550;
 				canJump = false;
 				break;
 		}
@@ -137,22 +141,35 @@ function init() {
 
 	// floor
 
-	let floorGeometry = new THREE.PlaneGeometry(2000, 2000, 10, 10);
+	let floorGeometry = new THREE.PlaneGeometry(
+		7500,
+		7500,
+		worldWidth - 1,
+		worldDepth - 1
+	);
 	floorGeometry.rotateX(-Math.PI / 2);
 
 	// vertex displacement
 
 	let position = floorGeometry.attributes.position;
 
-	for (let i = 0, l = position.count; i < l; i++) {
-		vertex.fromBufferAttribute(position, i);
+	const data = generateHeight(worldWidth, worldDepth);
 
-		vertex.x += Math.random() * 20 - 10;
-		vertex.y += Math.random() * 60;
-		vertex.z += Math.random() * 20 - 10;
+	const vertices = floorGeometry.attributes.position.array;
 
-		position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+	for (let i = 0, j = 0, l = vertices.length; i < l; i++, j += 3) {
+		vertices[j + 1] = data[i] * 10;
 	}
+
+	// for (let i = 0, l = position.count; i < l; i++) {
+	// 	vertex.fromBufferAttribute(position, i);
+
+	// 	vertex.x += Math.random() * 20 - 10;
+	// 	vertex.y += Math.random() * 60;
+	// 	vertex.z += Math.random() * 20 - 10;
+
+	// 	position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+	// }
 	// floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
 
 	position = floorGeometry.attributes.position;
@@ -174,7 +191,6 @@ function init() {
 	);
 	const loader = new THREE.TextureLoader();
 	loader.load("textures/grass.png", function (texture) {
-		console.log(texture);
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
 		texture.repeat.set(100, 100);
@@ -263,7 +279,6 @@ document.addEventListener(
 	function (event) {
 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
 		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-		console.log(pointer);
 
 		mraycaster.setFromCamera(pointer, camera);
 		var intersects = mraycaster.intersectObjects(scene.children);
@@ -284,13 +299,17 @@ function animate() {
 	requestAnimationFrame(animate);
 
 	const time = performance.now();
-
+	stats.update();
 	if (controls.isLocked === true) {
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
-
 		const intersections = raycaster.intersectObjects(scene.children, false);
+		// console.log("camera: ", controls.getObject().position.y);
+		// console.log("intersection: ", intersections[0]?.point.y);
 
+		if (intersections[0]) {
+			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
+		}
 		// let arrow = new THREE.ArrowHelper(
 		// 	raycaster.ray.direction,
 		// 	raycaster.ray.origin,
@@ -302,8 +321,8 @@ function animate() {
 
 		const delta = (time - prevTime) / 1000;
 
-		velocity.x -= velocity.x * 10.0 * delta;
-		velocity.z -= velocity.z * 10.0 * delta;
+		velocity.x -= velocity.x * 5.0 * delta;
+		velocity.z -= velocity.z * 5.0 * delta;
 
 		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
 
@@ -325,7 +344,7 @@ function animate() {
 
 		controls.getObject().position.y += velocity.y * delta; // new behavior
 
-		if (controls.getObject().position.y < 10) {
+		if (controls.getObject().position.y < intersections[0]?.point.y) {
 			velocity.y = 0;
 			controls.getObject().position.y = 10;
 
