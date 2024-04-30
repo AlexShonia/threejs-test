@@ -31,6 +31,7 @@ const worldWidth = 156,
 let aspectRatio;
 
 let arrowEnabled = false;
+let wireframeEnabled = false;
 
 init();
 animate();
@@ -44,28 +45,47 @@ function init() {
 		1,
 		1000
 	);
-	camera.position.y = 1000;
+	camera.position.y = 1050;
 
 	scene = new THREE.Scene();
 	// scene.background = new THREE.Color(0xcfe2f3);
 	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 900);
 
-	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 4.5);
-	light.position.set(0.5, 1, 0.75);
+	// const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 4.5);
+	// light.position.set(0.5, 1, 0.75);
+	let light = new THREE.DirectionalLight(0xffffff, 4.0);
+	light.position.set(500, 3200, 10);
+	light.target.position.set(0, 0, 0);
+	light.castShadow = true;
+	light.shadow.bias = -0.001;
+	light.shadow.mapSize.width = 512;
+	light.shadow.mapSize.height = 512;
+	light.shadow.camera.near = 0.1;
+	light.shadow.camera.far = 2000.0;
+	light.shadow.camera.near = 2000;
+	light.shadow.camera.far = 3500.0;
+	light.shadow.camera.left = 3000;
+	light.shadow.camera.right = -3000;
+	light.shadow.camera.top = 3000;
+	light.shadow.camera.bottom = -3000;
 	scene.add(light);
+	let lightHelper = new THREE.DirectionalLightHelper(light, 5);
+	scene.add(lightHelper);
+
+	const ambLight = new THREE.AmbientLight(0x101010, 60);
+	scene.add(ambLight);
 
 	//skybox
 	const sky = new THREE.CubeTextureLoader()
 		.setPath("/")
 		.load([
-			"posx.png",
-			"negx.png",
-			"posy.png",
-			"negy.png",
-			"posz.png",
-			"negz.png",
+			"posx.jpg",
+			"negx.jpg",
+			"posy.jpg",
+			"negy.jpg",
+			"posz.jpg",
+			"negz.jpg",
 		]);
-
 	scene.background = sky;
 
 	controls = new PointerLockControls(camera, document.body);
@@ -150,6 +170,7 @@ function init() {
 	let toggleButton = document.getElementById("toggle");
 
 	toggleButton.addEventListener("click", toggleArrow);
+
 	raycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
@@ -174,7 +195,7 @@ function init() {
 	);
 	floorGeometry.rotateX(-Math.PI / 2);
 
-	// vertex displacement
+	// terrain generation
 
 	let position = floorGeometry.attributes.position;
 
@@ -186,42 +207,19 @@ function init() {
 		vertices[j + 1] = data[i] * 10;
 	}
 
-	// for (let i = 0, l = position.count; i < l; i++) {
-	// 	vertex.fromBufferAttribute(position, i);
-
-	// 	vertex.x += Math.random() * 20 - 10;
-	// 	vertex.y += Math.random() * 60;
-	// 	vertex.z += Math.random() * 20 - 10;
-
-	// 	position.setXYZ(i, vertex.x, vertex.y, vertex.z);
-	// }
-	// floorGeometry = floorGeometry.toNonIndexed(); // ensure each face has unique vertices
-
-	position = floorGeometry.attributes.position;
-	const colorsFloor = [];
-
-	for (let i = 0, l = position.count; i < l; i++) {
-		color.setHSL(
-			Math.random() * 0.1 + 0.3,
-			0.2,
-			Math.random() * 0.1 + 0.35,
-			THREE.SRGBColorSpace
-		);
-		colorsFloor.push(color.r, color.g, color.b);
-	}
-
-	floorGeometry.setAttribute(
-		"color",
-		new THREE.Float32BufferAttribute(colorsFloor, 3)
-	);
 	const textureLoader = new THREE.TextureLoader();
 	textureLoader.load("textures/grass.png", function (texture) {
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
 		texture.repeat.set(250, 250);
-		const floorMaterial = new THREE.MeshBasicMaterial({
-			// vertexColors: true,
+		const floorMaterial = new THREE.MeshStandardMaterial({
 			map: texture,
+		});
+
+		let wireframeBtn = document.getElementById("wireframe");
+
+		wireframeBtn.addEventListener("click", () => {
+			floorMaterial.wireframe = !floorMaterial.wireframe;
 		});
 
 		floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -229,14 +227,21 @@ function init() {
 		floor.receiveShadow = true;
 		scene.add(floor);
 	});
+
 	// trees
 	const modelLoader = new GLTFLoader();
 	modelLoader.load("/models/tree/tree.glb", function (treeModel) {
-		const numberOfTrees = 150;
+		const numberOfTrees = 50;
+		const treeSpawnArea = 50;
+		treeModel.scene.traverse((child) => {
+			if (child.isMesh) {
+				child.castShadow = true;
+			}
+		});
 		for (let i = 0; i < numberOfTrees; i++) {
 			const tree = treeModel.scene.clone();
-			tree.position.x = (Math.random() * 30 - 12) * 90;
-			tree.position.z = (Math.random() * 30 - 12) * 90;
+			tree.position.x = (Math.random() * 30 - 12) * treeSpawnArea;
+			tree.position.z = (Math.random() * 30 - 12) * treeSpawnArea;
 			tree.position.y = 1300;
 			tree.rotateY(Math.random() * 360);
 			tree.scale.copy(
@@ -258,7 +263,7 @@ function init() {
 			treeRaycaster.set(treePos, toGround);
 			const grIntersect = treeRaycaster.intersectObject(floor);
 			if (grIntersect.length > 0) {
-				trees[i].position.y -= grIntersect[0].distance + 5;
+				trees[i].position.y -= grIntersect[0].distance;
 			}
 
 			// const arr = new THREE.ArrowHelper(
@@ -310,8 +315,10 @@ function init() {
 
 		const box = new THREE.Mesh(boxGeometry, boxMaterial);
 		box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
-		box.position.y = Math.floor(Math.random() * 20) * 20 + 10;
+		box.position.y = Math.floor(Math.random() * 20) * 20 + 1000;
 		box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
+		box.receiveShadow = true;
+		box.castShadow = true;
 
 		scene.add(box);
 		objects.push(box);
