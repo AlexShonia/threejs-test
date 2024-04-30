@@ -5,6 +5,7 @@ import { ImprovedNoise } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 
+
 let camera, scene, renderer, controls, stats;
 let floor;
 
@@ -37,22 +38,22 @@ init();
 animate();
 
 function init() {
+	// fps and ms
 	stats = new Stats();
 	document.body.appendChild(stats.dom);
-	camera = new THREE.PerspectiveCamera(
-		90,
-		window.innerWidth / window.innerHeight,
-		1,
-		1000
-	);
+
+	const fov = 90;
+	const aspect = window.innerWidth / window.innerHeight;
+	const near = 1.0;
+	const far = 1000;
+
+	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 	camera.position.y = 1050;
 
 	scene = new THREE.Scene();
 	// scene.background = new THREE.Color(0xcfe2f3);
 	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 900);
 
-	// const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 4.5);
-	// light.position.set(0.5, 1, 0.75);
 	let light = new THREE.DirectionalLight(0xffffff, 4.0);
 	light.position.set(500, 3200, 10);
 	light.target.position.set(0, 0, 0);
@@ -88,6 +89,226 @@ function init() {
 		]);
 	scene.background = sky;
 
+	playerControls();
+
+	function toggleArrow() {
+		arrowEnabled = !arrowEnabled;
+	}
+
+	let toggleButton = document.getElementById("toggle");
+
+	toggleButton.addEventListener("click", toggleArrow);
+
+	raycaster = new THREE.Raycaster(
+		new THREE.Vector3(),
+		new THREE.Vector3(0, -1, 0),
+		0,
+		10
+	);
+
+	mraycaster = new THREE.Raycaster(
+		new THREE.Vector3(),
+		new THREE.Vector3(0, -1, 0),
+		0,
+		10
+	);
+
+	// floor
+	generateGround();
+
+	// trees
+	generateTrees(50, 50);
+
+	// objects
+
+	const boxGeometry = new THREE.BoxGeometry(20, 20, 20).toNonIndexed();
+
+	let position = boxGeometry.attributes.position;
+	const colorsBox = [];
+
+	for (let i = 0, l = position.count; i < l; i++) {
+		color.setHSL(
+			Math.random() * 0.3 + 0.5,
+			0.75,
+			Math.random() * 0.25 + 0.75,
+			THREE.SRGBColorSpace
+		);
+		colorsBox.push(color.r, color.g, color.b);
+	}
+
+	boxGeometry.setAttribute(
+		"color",
+		new THREE.Float32BufferAttribute(colorsBox, 3)
+	);
+
+	for (let i = 0; i < 1; i++) {
+		const boxMaterial = new THREE.MeshPhongMaterial({
+			specular: 0xffffff,
+			flatShading: true,
+			vertexColors: true,
+		});
+		boxMaterial.color.setHSL(
+			Math.random() * 0.2 + 0.5,
+			0.75,
+			Math.random() * 0.25 + 0.75,
+			THREE.SRGBColorSpace
+		);
+
+		const box = new THREE.Mesh(boxGeometry, boxMaterial);
+		box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
+		box.position.y = Math.floor(Math.random() * 20) * 20 + 1000;
+		box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
+		box.receiveShadow = true;
+		box.castShadow = true;
+
+		scene.add(box);
+		objects.push(box);
+	}
+
+	aspectRatio = 0.666666;
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(
+		window.innerWidth / aspectRatio,
+		window.innerHeight / aspectRatio,
+		false
+	);
+	document.body.appendChild(renderer.domElement);
+
+	window.addEventListener("resize", onWindowResize);
+}
+
+function animate() {
+	requestAnimationFrame(animate);
+
+	const time = performance.now();
+	stats.update();
+	if (controls.isLocked === true) {
+		raycaster.ray.origin.copy(controls.getObject().position);
+		raycaster.ray.origin.y -= 10;
+		const intersections = raycaster.intersectObjects(scene.children, false);
+		// console.log("camera: ", controls.getObject().position.y);
+		// console.log("intersection: ", intersections[0]?.point.y);
+
+		if (intersections[0]) {
+			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
+		}
+		// console.log(controls.getObject().position.y);
+
+		if (arrowEnabled) {
+			let arrow = new THREE.ArrowHelper(
+				raycaster.ray.direction,
+				raycaster.ray.origin,
+				8,
+				0xff0000
+			);
+			scene.add(arrow);
+		}
+		const onObject = intersections.length > 0;
+
+		const delta = (time - prevTime) / 1000;
+
+		velocity.x -= velocity.x * 5.0 * delta;
+		velocity.z -= velocity.z * 5.0 * delta;
+
+		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+
+		direction.z = Number(moveForward) - Number(moveBackward);
+		direction.x = Number(moveRight) - Number(moveLeft);
+		direction.normalize(); // this ensures consistent movements in all directions
+		event;
+
+		if (moveForward || moveBackward)
+			velocity.z -= direction.z * 400.0 * delta;
+		if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+		if (onObject === true) {
+			velocity.y = Math.max(0, velocity.y);
+			canJump = true;
+		}
+		controls.moveRight(-velocity.x * delta);
+		controls.moveForward(-velocity.z * delta);
+
+		controls.getObject().position.y += velocity.y * delta; // new behavior
+
+		if (controls.getObject().position.y < intersections[0]?.point.y) {
+			velocity.y = 0;
+			controls.getObject().position.y = 10;
+
+			canJump = true;
+		}
+	}
+
+	prevTime = time;
+
+	renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+
+	renderer.setSize(
+		window.innerWidth / aspectRatio,
+		window.innerHeight / aspectRatio,
+		false
+	);
+}
+
+var pointer = new THREE.Vector2();
+
+document.addEventListener(
+	"mousedown",
+	function (event) {
+		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+		mraycaster.setFromCamera(pointer, camera);
+		var intersects = mraycaster.intersectObjects(scene.children);
+		if (intersects.length > 0) {
+			var marrow = new THREE.ArrowHelper(
+				mraycaster.ray.direction,
+				mraycaster.ray.origin,
+				8,
+				0xff0000
+			);
+			scene.add(marrow);
+		}
+	},
+	false
+);
+function generateHeight(width, height) {
+	let seed = Math.PI / 4;
+	window.Math.random = function () {
+		const x = Math.sin(seed++) * 10000;
+		return x - Math.floor(x);
+	};
+
+	const size = width * height,
+		data = new Uint8Array(size);
+	const perlin = new ImprovedNoise(),
+		z = Math.random() * 100;
+
+	let quality = 1;
+
+	for (let j = 0; j < 4; j++) {
+		for (let i = 0; i < size; i++) {
+			const x = i % width,
+				y = ~~(i / width);
+			data[i] += Math.abs(
+				perlin.noise(x / quality, y / quality, z) * quality * 1.75
+			);
+		}
+
+		quality *= 5;
+	}
+
+	return data;
+}
+
+function playerControls() {
 	controls = new PointerLockControls(camera, document.body);
 
 	const blocker = document.getElementById("blocker");
@@ -161,32 +382,11 @@ function init() {
 				break;
 		}
 	};
-	function toggleArrow() {
-		arrowEnabled = !arrowEnabled;
-	}
-
 	document.addEventListener("keydown", onKeyDown);
 	document.addEventListener("keyup", onKeyUp);
-	let toggleButton = document.getElementById("toggle");
+}
 
-	toggleButton.addEventListener("click", toggleArrow);
-
-	raycaster = new THREE.Raycaster(
-		new THREE.Vector3(),
-		new THREE.Vector3(0, -1, 0),
-		0,
-		10
-	);
-
-	mraycaster = new THREE.Raycaster(
-		new THREE.Vector3(),
-		new THREE.Vector3(0, -1, 0),
-		0,
-		10
-	);
-
-	// floor
-
+function generateGround() {
 	let floorGeometry = new THREE.PlaneGeometry(
 		7500,
 		7500,
@@ -227,12 +427,11 @@ function init() {
 		floor.receiveShadow = true;
 		scene.add(floor);
 	});
+}
 
-	// trees
+function generateTrees(numberOfTrees, treeSpawnArea) {
 	const modelLoader = new GLTFLoader();
 	modelLoader.load("/models/tree/tree.glb", function (treeModel) {
-		const numberOfTrees = 50;
-		const treeSpawnArea = 50;
 		treeModel.scene.traverse((child) => {
 			if (child.isMesh) {
 				child.castShadow = true;
@@ -275,194 +474,4 @@ function init() {
 			// scene.add(arr);
 		}
 	});
-
-	// objects
-
-	const boxGeometry = new THREE.BoxGeometry(20, 20, 20).toNonIndexed();
-
-	position = boxGeometry.attributes.position;
-	const colorsBox = [];
-
-	floorGeometry = floorGeometry.toNonIndexed();
-
-	for (let i = 0, l = position.count; i < l; i++) {
-		color.setHSL(
-			Math.random() * 0.3 + 0.5,
-			0.75,
-			Math.random() * 0.25 + 0.75,
-			THREE.SRGBColorSpace
-		);
-		colorsBox.push(color.r, color.g, color.b);
-	}
-
-	boxGeometry.setAttribute(
-		"color",
-		new THREE.Float32BufferAttribute(colorsBox, 3)
-	);
-
-	for (let i = 0; i < 1; i++) {
-		const boxMaterial = new THREE.MeshPhongMaterial({
-			specular: 0xffffff,
-			flatShading: true,
-			vertexColors: true,
-		});
-		boxMaterial.color.setHSL(
-			Math.random() * 0.2 + 0.5,
-			0.75,
-			Math.random() * 0.25 + 0.75,
-			THREE.SRGBColorSpace
-		);
-
-		const box = new THREE.Mesh(boxGeometry, boxMaterial);
-		box.position.x = Math.floor(Math.random() * 20 - 10) * 20;
-		box.position.y = Math.floor(Math.random() * 20) * 20 + 1000;
-		box.position.z = Math.floor(Math.random() * 20 - 10) * 20;
-		box.receiveShadow = true;
-		box.castShadow = true;
-
-		scene.add(box);
-		objects.push(box);
-	}
-
-	aspectRatio = 0.666666;
-	renderer = new THREE.WebGLRenderer({ antialias: true });
-	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-	renderer.setPixelRatio(window.devicePixelRatio);
-	renderer.setSize(
-		window.innerWidth / aspectRatio,
-		window.innerHeight / aspectRatio,
-		false
-	);
-	document.body.appendChild(renderer.domElement);
-
-	window.addEventListener("resize", onWindowResize);
-}
-
-function onWindowResize() {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
-
-	renderer.setSize(
-		window.innerWidth / aspectRatio,
-		window.innerHeight / aspectRatio,
-		false
-	);
-}
-var pointer = new THREE.Vector2();
-
-document.addEventListener(
-	"mousedown",
-	function (event) {
-		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-		mraycaster.setFromCamera(pointer, camera);
-		var intersects = mraycaster.intersectObjects(scene.children);
-		if (intersects.length > 0) {
-			var marrow = new THREE.ArrowHelper(
-				mraycaster.ray.direction,
-				mraycaster.ray.origin,
-				8,
-				0xff0000
-			);
-			scene.add(marrow);
-		}
-	},
-	false
-);
-
-function animate() {
-	requestAnimationFrame(animate);
-
-	const time = performance.now();
-	stats.update();
-	if (controls.isLocked === true) {
-		raycaster.ray.origin.copy(controls.getObject().position);
-		raycaster.ray.origin.y -= 10;
-		const intersections = raycaster.intersectObjects(scene.children, false);
-		// console.log("camera: ", controls.getObject().position.y);
-		// console.log("intersection: ", intersections[0]?.point.y);
-
-		if (intersections[0]) {
-			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
-		}
-		// console.log(controls.getObject().position.y);
-
-		if (arrowEnabled) {
-			let arrow = new THREE.ArrowHelper(
-				raycaster.ray.direction,
-				raycaster.ray.origin,
-				8,
-				0xff0000
-			);
-			scene.add(arrow);
-		}
-		const onObject = intersections.length > 0;
-
-		const delta = (time - prevTime) / 1000;
-
-		velocity.x -= velocity.x * 5.0 * delta;
-		velocity.z -= velocity.z * 5.0 * delta;
-
-		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-		direction.z = Number(moveForward) - Number(moveBackward);
-		direction.x = Number(moveRight) - Number(moveLeft);
-		direction.normalize(); // this ensures consistent movements in all directions
-		event;
-
-		if (moveForward || moveBackward)
-			velocity.z -= direction.z * 400.0 * delta;
-		if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
-
-		if (onObject === true) {
-			velocity.y = Math.max(0, velocity.y);
-			canJump = true;
-		}
-		controls.moveRight(-velocity.x * delta);
-		controls.moveForward(-velocity.z * delta);
-
-		controls.getObject().position.y += velocity.y * delta; // new behavior
-
-		if (controls.getObject().position.y < intersections[0]?.point.y) {
-			velocity.y = 0;
-			controls.getObject().position.y = 10;
-
-			canJump = true;
-		}
-	}
-
-	prevTime = time;
-
-	renderer.render(scene, camera);
-}
-
-function generateHeight(width, height) {
-	let seed = Math.PI / 4;
-	window.Math.random = function () {
-		const x = Math.sin(seed++) * 10000;
-		return x - Math.floor(x);
-	};
-
-	const size = width * height,
-		data = new Uint8Array(size);
-	const perlin = new ImprovedNoise(),
-		z = Math.random() * 100;
-
-	let quality = 1;
-
-	for (let j = 0; j < 4; j++) {
-		for (let i = 0; i < size; i++) {
-			const x = i % width,
-				y = ~~(i / width);
-			data[i] += Math.abs(
-				perlin.noise(x / quality, y / quality, z) * quality * 1.75
-			);
-		}
-
-		quality *= 5;
-	}
-
-	return data;
 }
