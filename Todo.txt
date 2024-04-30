@@ -3,4 +3,10 @@
 + fix movement on terrain
 + add fps counter
 + Add trees
-model your tree
++ model your tree
+improve your tree
+    decrease leaves resolution
+    improve visually
+add a way to increase speed while playing
+    scroll? or some keypress?
+break up the code into function&files

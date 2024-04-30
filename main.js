@@ -30,6 +30,8 @@ const worldWidth = 156,
 	worldDepth = 156;
 let aspectRatio;
 
+let arrowEnabled = false;
+
 init();
 animate();
 
@@ -40,17 +42,31 @@ function init() {
 		90,
 		window.innerWidth / window.innerHeight,
 		1,
-		8000
+		1000
 	);
 	camera.position.y = 1000;
 
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xcfe2f3);
-	scene.fog = new THREE.Fog(0xcfe2f3, 0, 7050);
+	// scene.background = new THREE.Color(0xcfe2f3);
+	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 900);
 
 	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 4.5);
 	light.position.set(0.5, 1, 0.75);
 	scene.add(light);
+
+	//skybox
+	const sky = new THREE.CubeTextureLoader()
+		.setPath("/")
+		.load([
+			"posx.png",
+			"negx.png",
+			"posy.png",
+			"negy.png",
+			"posz.png",
+			"negz.png",
+		]);
+
+	scene.background = sky;
 
 	controls = new PointerLockControls(camera, document.body);
 
@@ -125,16 +141,22 @@ function init() {
 				break;
 		}
 	};
+	function toggleArrow() {
+		arrowEnabled = !arrowEnabled;
+	}
 
 	document.addEventListener("keydown", onKeyDown);
 	document.addEventListener("keyup", onKeyUp);
+	let toggleButton = document.getElementById("toggle");
 
+	toggleButton.addEventListener("click", toggleArrow);
 	raycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
 		0,
 		10
 	);
+
 	mraycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
@@ -196,27 +218,33 @@ function init() {
 	textureLoader.load("textures/grass.png", function (texture) {
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.set(100, 100);
+		texture.repeat.set(250, 250);
 		const floorMaterial = new THREE.MeshBasicMaterial({
 			// vertexColors: true,
 			map: texture,
 		});
 
 		floor = new THREE.Mesh(floorGeometry, floorMaterial);
+		floor.castShadow = false;
+		floor.receiveShadow = true;
 		scene.add(floor);
 	});
 	// trees
 	const modelLoader = new GLTFLoader();
-	modelLoader.load("/models/palm_tree/scene.gltf", function (treeModel) {
-		const numberOfTrees = 50;
+	modelLoader.load("/models/tree/tree.glb", function (treeModel) {
+		const numberOfTrees = 150;
 		for (let i = 0; i < numberOfTrees; i++) {
 			const tree = treeModel.scene.clone();
-			tree.position.x = (Math.random() * 30 - 12) * 30;
-			tree.position.z = (Math.random() * 30 - 12) * 30;
+			tree.position.x = (Math.random() * 30 - 12) * 90;
+			tree.position.z = (Math.random() * 30 - 12) * 90;
 			tree.position.y = 1300;
-			tree.scale.x = 10;
-			tree.scale.y = 10;
-			tree.scale.z = 10;
+			tree.rotateY(Math.random() * 360);
+			tree.scale.copy(
+				new THREE.Vector3(1, 1, 1).multiplyScalar(
+					Math.random() * 3 + 10
+				)
+			);
+			tree.castShadow = true;
 			scene.add(tree);
 			trees.push(tree);
 		}
@@ -291,6 +319,8 @@ function init() {
 
 	aspectRatio = 0.666666;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setSize(
 		window.innerWidth / aspectRatio,
@@ -351,13 +381,16 @@ function animate() {
 			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
 		}
 		// console.log(controls.getObject().position.y);
-		// let arrow = new THREE.ArrowHelper(
-		// 	raycaster.ray.direction,
-		// 	raycaster.ray.origin,
-		// 	8,
-		// 	0xff0000
-		// );
-		// scene.add(arrow);
+
+		if (arrowEnabled) {
+			let arrow = new THREE.ArrowHelper(
+				raycaster.ray.direction,
+				raycaster.ray.origin,
+				8,
+				0xff0000
+			);
+			scene.add(arrow);
+		}
 		const onObject = intersections.length > 0;
 
 		const delta = (time - prevTime) / 1000;
