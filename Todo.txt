@@ -5,7 +5,8 @@
 + Add trees
 + model your tree
 + get better skybox 
-add shadowns
+understand why are there minuses in character movement code
+add shadows
 break up the code into function&files
 add a way to increase speed while playing
     scroll? or some keypress?

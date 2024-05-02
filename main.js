@@ -1,10 +1,9 @@
 import * as THREE from "three";
 
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { ImprovedNoise } from "three/examples/jsm/Addons.js";
+import { FBXLoader, ImprovedNoise } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
-
 
 let camera, scene, renderer, controls, stats;
 let floor;
@@ -14,6 +13,7 @@ const trees = [];
 
 let raycaster;
 let mraycaster;
+let charRaycaster;
 
 let moveForward = false;
 let moveBackward = false;
@@ -21,10 +21,17 @@ let moveLeft = false;
 let moveRight = false;
 let canJump = false;
 
+let character;
+let forward = false;
+let backward = false;
+let left = false;
+let right = false;
+const characterVelocity = new THREE.Vector3();
+const characterDirection = new THREE.Vector3();
+
 let prevTime = performance.now();
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
-const vertex = new THREE.Vector3();
 const color = new THREE.Color();
 
 const worldWidth = 156,
@@ -32,7 +39,8 @@ const worldWidth = 156,
 let aspectRatio;
 
 let arrowEnabled = false;
-let wireframeEnabled = false;
+
+let mixer;
 
 init();
 animate();
@@ -48,13 +56,13 @@ function init() {
 	const far = 1000;
 
 	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	camera.position.y = 1050;
+	camera.position.y = 1000;
 
 	scene = new THREE.Scene();
 	// scene.background = new THREE.Color(0xcfe2f3);
-	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 900);
+	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 600);
 
-	let light = new THREE.DirectionalLight(0xffffff, 4.0);
+	let light = new THREE.DirectionalLight(0xffffff, 1.0);
 	light.position.set(500, 3200, 10);
 	light.target.position.set(0, 0, 0);
 	light.castShadow = true;
@@ -87,6 +95,7 @@ function init() {
 			"posz.jpg",
 			"negz.jpg",
 		]);
+
 	scene.background = sky;
 
 	playerControls();
@@ -106,6 +115,13 @@ function init() {
 		10
 	);
 
+	charRaycaster = new THREE.Raycaster(
+		new THREE.Vector3(),
+		new THREE.Vector3(0, -1, 0),
+		0,
+		10
+	);
+
 	mraycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
@@ -118,6 +134,65 @@ function init() {
 
 	// trees
 	generateTrees(50, 50);
+
+	document.addEventListener("keydown", (event) => {
+		switch (event.code) {
+			case "Numpad8":
+				forward = true;
+				break;
+			case "Numpad5":
+				backward = true;
+				break;
+			case "Numpad4":
+				left = true;
+				break;
+			case "Numpad6":
+				right = true;
+				break;
+			case "Numpad0":
+				characterVelocity.y += 250;
+				break;
+		}
+	});
+	document.addEventListener("keyup", (event) => {
+		switch (event.code) {
+			case "Numpad8":
+				forward = false;
+				break;
+			case "Numpad5":
+				backward = false;
+				break;
+			case "Numpad4":
+				left = false;
+				break;
+			case "Numpad6":
+				right = false;
+				break;
+		}
+	});
+
+	//character
+	const characterLoader = new FBXLoader();
+	characterLoader.setPath("./character/");
+	characterLoader.load("character.fbx", (fbx) => {
+		fbx.scale.setScalar(0.1);
+		fbx.traverse((c) => {
+			c.castShadow = true;
+		});
+		fbx.position.y = 995;
+		fbx.position.z = -10;
+		character = fbx;
+
+		// const anim = new FBXLoader();
+		// anim.setPath("./character/");
+		// anim.load("sword and shield walk (2).fbx", (anim) => {
+		// 	mixer = new THREE.AnimationMixer(fbx);
+		// 	const sheath = mixer.clipAction(anim.animations[0]);
+		// 	sheath.play();
+		// });
+
+		scene.add(fbx);
+	});
 
 	// objects
 
@@ -165,14 +240,15 @@ function init() {
 		objects.push(box);
 	}
 
-	aspectRatio = 0.666666;
+	aspectRatio = 1;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.shadowMap.enabled = true;
 	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.shadowMap.autoUpdate = false;
 	renderer.setPixelRatio(window.devicePixelRatio);
 	renderer.setSize(
-		window.innerWidth / aspectRatio,
-		window.innerHeight / aspectRatio,
+		window.innerWidth * aspectRatio,
+		window.innerHeight * aspectRatio,
 		false
 	);
 	document.body.appendChild(renderer.domElement);
@@ -188,6 +264,14 @@ function animate() {
 	if (controls.isLocked === true) {
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
+
+		charRaycaster.ray.origin.copy(character.position);
+		charRaycaster.ray.origin.y -= 10;
+
+		const charIntersections = charRaycaster.intersectObjects(
+			scene.children,
+			false
+		);
 		const intersections = raycaster.intersectObjects(scene.children, false);
 		// console.log("camera: ", controls.getObject().position.y);
 		// console.log("intersection: ", intersections[0]?.point.y);
@@ -206,9 +290,11 @@ function animate() {
 			);
 			scene.add(arrow);
 		}
+		const charOnObject = charIntersections.length > 0;
 		const onObject = intersections.length > 0;
 
 		const delta = (time - prevTime) / 1000;
+		// mixer.update(delta);
 
 		velocity.x -= velocity.x * 5.0 * delta;
 		velocity.z -= velocity.z * 5.0 * delta;
@@ -228,6 +314,44 @@ function animate() {
 			velocity.y = Math.max(0, velocity.y);
 			canJump = true;
 		}
+
+		// controls.getObject().position.y = character.position.y + 22;
+		// controls.getObject().position.x = character.position.x;
+		// controls.getObject().position.z = character.position.z - 10;
+		characterVelocity.x -= characterVelocity.x * 5.0 * delta;
+		characterVelocity.z -= characterVelocity.z * 5.0 * delta;
+
+		characterVelocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
+
+		characterDirection.z = Number(forward) - Number(backward);
+		characterDirection.x = Number(left) - Number(right);
+		characterDirection.normalize();
+
+		if (forward || backward) {
+			characterVelocity.z -= characterDirection.z * 400 * delta;
+		}
+		if (left || right) {
+			characterVelocity.x -= characterDirection.x * 400 * delta;
+		}
+
+		if (charOnObject === true) {
+			characterVelocity.y = Math.max(0, characterVelocity.y);
+		}
+
+		character.position.z += -characterVelocity.z * delta;
+		character.position.x += -characterVelocity.x * delta;
+
+		if (charIntersections[0]) {
+			character.position.y = charIntersections[0]?.point.y + 16.85;
+		}
+
+		character.position.y += characterVelocity.y * delta;
+		// if(left){
+		// 	character.position.x += 20 * delta;
+		// }
+		// if(right){
+		// 	character.position.x -= 20 * delta;
+		// }
 		controls.moveRight(-velocity.x * delta);
 		controls.moveForward(-velocity.z * delta);
 
@@ -279,6 +403,7 @@ document.addEventListener(
 	},
 	false
 );
+
 function generateHeight(width, height) {
 	let seed = Math.PI / 4;
 	window.Math.random = function () {
@@ -473,5 +598,7 @@ function generateTrees(numberOfTrees, treeSpawnArea) {
 			// );
 			// scene.add(arr);
 		}
+
+		renderer.shadowMap.needsUpdate = true;
 	});
 }
