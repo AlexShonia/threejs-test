@@ -1,15 +1,18 @@
 import * as THREE from "three";
 
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
-import { FBXLoader, ImprovedNoise } from "three/examples/jsm/Addons.js";
+import {
+	GLTFLoader,
+	FBXLoader,
+	ImprovedNoise,
+} from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import { GLTFLoader } from "three/examples/jsm/Addons.js";
 
 let camera, scene, renderer, controls, stats;
 let floor;
 
 const objects = [];
-const trees = [];
+let trees = [];
 
 let raycaster;
 let mraycaster;
@@ -47,6 +50,7 @@ animate();
 
 function init() {
 	// fps and ms
+
 	stats = new Stats();
 	document.body.appendChild(stats.dom);
 
@@ -59,16 +63,46 @@ function init() {
 	camera.position.y = 1000;
 
 	scene = new THREE.Scene();
-	// scene.background = new THREE.Color(0xcfe2f3);
-	// scene.fog = new THREE.Fog(0xcfe2f3, 0, 600);
 
-	let light = new THREE.DirectionalLight(0xffffff, 1.0);
+	// const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 2);
+	// hemiLight.color.setHSL(0.6, 1, 0.6);
+
+	// const uniforms = {
+	// 	topColor: { value: new THREE.Color(0x0077ff) },
+	// 	bottomColor: { value: new THREE.Color(0xffffff) },
+	// 	offset: { value: 33 },
+	// 	exponent: { value: 0.6 },
+	// };
+	// uniforms["topColor"].value.copy(hemiLight.color);
+
+	// // scene.fog.color.copy(uniforms["bottomColor"].value);
+	// const vertexShader = document.getElementById("vertexShader").textContent;
+	// const fragmentShader =
+	// 	document.getElementById("fragmentShader").textContent;
+	// const skyGeo = new THREE.SphereGeometry(4000, 32, 15);
+	// const skyMat = new THREE.ShaderMaterial({
+	// 	uniforms: uniforms,
+	// 	vertexShader: vertexShader,
+	// 	fragmentShader: fragmentShader,
+	// 	side: THREE.BackSide,
+	// });
+
+	// const sky = new THREE.Mesh(skyGeo, skyMat);
+	// scene.add(sky);
+	// scene.background = new THREE.Color(0xcfe2f3);
+	scene.fog = new THREE.Fog(0xcfe2f3, 0, 600);
+
+	const pointLight = new THREE.PointLight(0xffad57, 20, 100, 1);
+	pointLight.position.set(0, 990, 0);
+	scene.add(pointLight);
+
+	let light = new THREE.DirectionalLight(0xe6e6e6, 0.3);
 	light.position.set(500, 3200, 10);
 	light.target.position.set(0, 0, 0);
 	light.castShadow = true;
 	light.shadow.bias = -0.001;
-	light.shadow.mapSize.width = 512;
-	light.shadow.mapSize.height = 512;
+	light.shadow.mapSize.width = 1024;
+	light.shadow.mapSize.height = 1024;
 	light.shadow.camera.near = 0.1;
 	light.shadow.camera.far = 2000.0;
 	light.shadow.camera.near = 2000;
@@ -78,25 +112,25 @@ function init() {
 	light.shadow.camera.top = 3000;
 	light.shadow.camera.bottom = -3000;
 	scene.add(light);
-	let lightHelper = new THREE.DirectionalLightHelper(light, 5);
-	scene.add(lightHelper);
+	// let lightHelper = new THREE.DirectionalLightHelper(light, 5);
+	// scene.add(lightHelper);
 
-	const ambLight = new THREE.AmbientLight(0x101010, 60);
+	const ambLight = new THREE.AmbientLight(0xdbdbdb, 0.1);
 	scene.add(ambLight);
 
 	//skybox
-	const sky = new THREE.CubeTextureLoader()
-		.setPath("/")
-		.load([
-			"posx.jpg",
-			"negx.jpg",
-			"posy.jpg",
-			"negy.jpg",
-			"posz.jpg",
-			"negz.jpg",
-		]);
-
-	scene.background = sky;
+	// const sky = new THREE.CubeTextureLoader()
+	// 	.setPath("/")
+	// 	.load([
+	// 		"posx.jpg",
+	// 		"negx.jpg",
+	// 		"posy.jpg",
+	// 		"negy.jpg",
+	// 		"posz.jpg",
+	// 		"negz.jpg",
+	// 	]);
+	// scene.background = sky;
+	// scene.environment = sky;
 
 	playerControls();
 
@@ -133,7 +167,7 @@ function init() {
 	generateGround();
 
 	// trees
-	generateTrees(50, 50);
+	generateTrees(300, 25);
 
 	document.addEventListener("keydown", (event) => {
 		switch (event.code) {
@@ -533,10 +567,10 @@ function generateGround() {
 	}
 
 	const textureLoader = new THREE.TextureLoader();
-	textureLoader.load("textures/grass.png", function (texture) {
+	textureLoader.load("textures/grass.jpg", function (texture) {
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.set(250, 250);
+		texture.repeat.set(150, 150);
 		const floorMaterial = new THREE.MeshStandardMaterial({
 			map: texture,
 		});
@@ -573,7 +607,6 @@ function generateTrees(numberOfTrees, treeSpawnArea) {
 					Math.random() * 3 + 10
 				)
 			);
-			tree.castShadow = true;
 			scene.add(tree);
 			trees.push(tree);
 		}
@@ -589,16 +622,17 @@ function generateTrees(numberOfTrees, treeSpawnArea) {
 			if (grIntersect.length > 0) {
 				trees[i].position.y -= grIntersect[0].distance;
 			}
-
-			// const arr = new THREE.ArrowHelper(
-			// 	treeRaycaster.ray.direction,
-			// 	treeRaycaster.ray.origin,
-			// 	8,
-			// 	0xff0000
-			// );
-			// scene.add(arr);
 		}
+		// 	// const arr = new THREE.ArrowHelper(
+		// 	// 	treeRaycaster.ray.direction,
+		// 	// 	treeRaycaster.ray.origin,
+		// 	// 	8,
+		// 	// 	0xff0000
+		// 	// );
+		// 	// scene.add(arr);
+		// }
 
 		renderer.shadowMap.needsUpdate = true;
+		trees = null;
 	});
 }

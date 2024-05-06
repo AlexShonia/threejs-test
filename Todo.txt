@@ -6,10 +6,11 @@
 + model your tree
 + get better skybox 
 understand why are there minuses in character movement code
-add shadows
++ add shadows
 break up the code into function&files
 add a way to increase speed while playing
     scroll? or some keypress?
 improve your tree
-    decrease leaves resolution
+    + decrease leaves resolution
+        more!
     improve visually
