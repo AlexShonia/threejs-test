@@ -89,7 +89,7 @@ function init() {
 
 	// const sky = new THREE.Mesh(skyGeo, skyMat);
 	// scene.add(sky);
-	// scene.background = new THREE.Color(0xcfe2f3);
+	scene.background = new THREE.Color(0xcfe2f3);
 	scene.fog = new THREE.Fog(0xcfe2f3, 0, 600);
 
 	const pointLight = new THREE.PointLight(0xffad57, 20, 100, 1);
