@@ -37,8 +37,8 @@ const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
 const color = new THREE.Color();
 
-const worldWidth = 156,
-	worldDepth = 156;
+const worldWidth = 64,
+	worldDepth = 64;
 let aspectRatio;
 
 let arrowEnabled = false;
@@ -54,46 +54,45 @@ function init() {
 	stats = new Stats();
 	document.body.appendChild(stats.dom);
 
-	const fov = 90;
+	const fov = 60;
 	const aspect = window.innerWidth / window.innerHeight;
 	const near = 1.0;
-	const far = 1000;
+	const far = 3000;
 
 	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	camera.position.y = 1000;
+	camera.position.y = 730;
 
 	scene = new THREE.Scene();
 
-	// const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 2);
-	// hemiLight.color.setHSL(0.6, 1, 0.6);
+	const uniforms = {
+		topColor: { value: new THREE.Color(0x94bae0) },
+		bottomColor: { value: new THREE.Color(0xe7edef) },
+		offset: { value: 0 },
+		exponent: { value: 2.0 },
+	};
 
-	// const uniforms = {
-	// 	topColor: { value: new THREE.Color(0x0077ff) },
-	// 	bottomColor: { value: new THREE.Color(0xffffff) },
-	// 	offset: { value: 33 },
-	// 	exponent: { value: 0.6 },
-	// };
-	// uniforms["topColor"].value.copy(hemiLight.color);
+	scene.fog = new THREE.Fog(0xadc2d5, 0, 600);
 
-	// // scene.fog.color.copy(uniforms["bottomColor"].value);
-	// const vertexShader = document.getElementById("vertexShader").textContent;
-	// const fragmentShader =
-	// 	document.getElementById("fragmentShader").textContent;
-	// const skyGeo = new THREE.SphereGeometry(4000, 32, 15);
-	// const skyMat = new THREE.ShaderMaterial({
-	// 	uniforms: uniforms,
-	// 	vertexShader: vertexShader,
-	// 	fragmentShader: fragmentShader,
-	// 	side: THREE.BackSide,
-	// });
+	// scene.fog.color.copy(uniforms["bottomColor"].value);
+	const vertexShader = document.getElementById("vertexShader").textContent;
+	const fragmentShader =
+		document.getElementById("fragmentShader").textContent;
+	const skyGeo = new THREE.SphereGeometry(1800, 32, 16);
+	const skyMat = new THREE.ShaderMaterial({
+		uniforms: uniforms,
+		vertexShader: vertexShader,
+		fragmentShader: fragmentShader,
+		side: THREE.BackSide,
+	});
 
-	// const sky = new THREE.Mesh(skyGeo, skyMat);
-	// scene.add(sky);
+	const sky = new THREE.Mesh(skyGeo, skyMat);
+	sky.position.y = 1000;
+
+	scene.add(sky);
 	scene.background = new THREE.Color(0xcfe2f3);
-	scene.fog = new THREE.Fog(0xcfe2f3, 0, 600);
 
 	const pointLight = new THREE.PointLight(0xffad57, 20, 100, 1);
-	pointLight.position.set(0, 990, 0);
+	pointLight.position.set(0, 720, 0);
 	scene.add(pointLight);
 
 	let light = new THREE.DirectionalLight(0xe6e6e6, 0.3);
@@ -119,7 +118,7 @@ function init() {
 	scene.add(ambLight);
 
 	//skybox
-	// const sky = new THREE.CubeTextureLoader()
+	// const sky1 = new THREE.CubeTextureLoader()
 	// 	.setPath("/")
 	// 	.load([
 	// 		"posx.jpg",
@@ -129,8 +128,8 @@ function init() {
 	// 		"posz.jpg",
 	// 		"negz.jpg",
 	// 	]);
-	// scene.background = sky;
-	// scene.environment = sky;
+	// scene.background = sky1;
+	// scene.environment = sky1;
 
 	playerControls();
 
@@ -167,7 +166,8 @@ function init() {
 	generateGround();
 
 	// trees
-	generateTrees(300, 25);
+	// generateTrees(0, 25, "treeCobweb1.glb");
+	generateTrees(300, 800, "tree-op4.glb");
 
 	document.addEventListener("keydown", (event) => {
 		switch (event.code) {
@@ -214,7 +214,7 @@ function init() {
 			c.castShadow = true;
 		});
 		fbx.position.y = 995;
-		fbx.position.z = -10;
+		fbx.position.x = -60;
 		character = fbx;
 
 		// const anim = new FBXLoader();
@@ -512,7 +512,7 @@ function playerControls() {
 				break;
 
 			case "Space":
-				velocity.y += 550;
+				velocity.y += 350;
 				canJump = false;
 				break;
 		}
@@ -588,51 +588,118 @@ function generateGround() {
 	});
 }
 
-function generateTrees(numberOfTrees, treeSpawnArea) {
+function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 	const modelLoader = new GLTFLoader();
-	modelLoader.load("/models/tree/tree.glb", function (treeModel) {
-		treeModel.scene.traverse((child) => {
-			if (child.isMesh) {
-				child.castShadow = true;
-			}
-		});
-		for (let i = 0; i < numberOfTrees; i++) {
-			const tree = treeModel.scene.clone();
-			tree.position.x = (Math.random() * 30 - 12) * treeSpawnArea;
-			tree.position.z = (Math.random() * 30 - 12) * treeSpawnArea;
-			tree.position.y = 1300;
-			tree.rotateY(Math.random() * 360);
-			tree.scale.copy(
-				new THREE.Vector3(1, 1, 1).multiplyScalar(
-					Math.random() * 3 + 10
-				)
-			);
-			scene.add(tree);
-			trees.push(tree);
-		}
+	modelLoader.load(`/models/tree/${treeName}`, function (treeModel) {
+		// treeModel.scene.traverse((child) => {
+		// 	if (child.isMesh) {
+		// 		child.castShadow = true;
+		// 	}
+		// });
+
+		const treeBodyModel = treeModel.scene.children[0];
+		const treeLeavesModel = treeModel.scene.children[1];
+
+		const instancedTreeBody = new THREE.InstancedMesh(
+			treeBodyModel.geometry,
+			treeBodyModel.material,
+			numberOfTrees
+		);
+		instancedTreeBody.castShadow = true;
+
+		const instancedTreeLeaves = new THREE.InstancedMesh(
+			treeLeavesModel.geometry,
+			treeLeavesModel.material,
+			numberOfTrees
+		);
+		instancedTreeLeaves.castShadow = true;
 
 		const treeRaycaster = new THREE.Raycaster();
 		let toGround = new THREE.Vector3(0, -1, 0);
 
 		for (let i = 0; i < numberOfTrees; i++) {
-			const treePos = trees[i].position;
+			// random values
+			const random = {
+				x: (Math.random() - 0.5) * treeSpawnArea,
+				y: (Math.random() - 0.5) * treeSpawnArea,
+				z: (Math.random() - 0.5) * treeSpawnArea,
+			};
 
-			treeRaycaster.set(treePos, toGround);
+			// body
+			const bodyTransformation = new THREE.Vector3(0, 0, 0);
+			const bodyOrientation = new THREE.Quaternion();
+			const bodyScale = new THREE.Vector3(10, 10, 10);
+
+			bodyTransformation.x += random.x;
+			bodyTransformation.z += random.z;
+			bodyTransformation.y = 1300;
+
+			const randomRotation = new THREE.Euler(
+				treeBodyModel.rotation.x,
+				treeBodyModel.rotation.y - random.y,
+				treeBodyModel.rotation.z
+			);
+			bodyOrientation.setFromEuler(randomRotation);
+
+			treeRaycaster.set(bodyTransformation, toGround);
 			const grIntersect = treeRaycaster.intersectObject(floor);
+
 			if (grIntersect.length > 0) {
-				trees[i].position.y -= grIntersect[0].distance;
+				bodyTransformation.y -= grIntersect[0].distance;
 			}
+
+			// const arr = new THREE.ArrowHelper(
+			// 	treeRaycaster.ray.direction,
+			// 	treeRaycaster.ray.origin,
+			// 	50,
+			// 	0xff0000
+			// );
+
+			// scene.add(arr);
+
+			const bodyMatrix = new THREE.Matrix4();
+			bodyMatrix.compose(bodyTransformation, bodyOrientation, bodyScale);
+
+			instancedTreeBody.setMatrixAt(i, bodyMatrix);
+
+			// leaves
+			const leavesTransformation = new THREE.Vector3(0, 0, 0);
+			const leavesOrientation = new THREE.Quaternion();
+			const leavesScale = new THREE.Vector3(10, 10, 10);
+			
+			// setting them back to orginal matrix
+			const randomLeavesRotation = new THREE.Euler(
+				treeLeavesModel.rotation.x,
+				treeLeavesModel.rotation.y - random.y,
+				treeLeavesModel.rotation.z
+			);
+
+			leavesOrientation.setFromEuler(randomLeavesRotation);
+
+			// console.log(randomLeavesRotation.y);
+			// console.log("--");
+			// console.log(randomRotation.y);
+
+			leavesTransformation.x += bodyTransformation.x;
+			leavesTransformation.z += bodyTransformation.z;
+			leavesTransformation.y = bodyTransformation.y;
+
+			const leavesMatrix = new THREE.Matrix4();
+			leavesMatrix.compose(
+				leavesTransformation,
+				leavesOrientation,
+				leavesScale
+			);
+
+			instancedTreeLeaves.setMatrixAt(i, leavesMatrix);
+
+			// casting rays
 		}
-		// 	// const arr = new THREE.ArrowHelper(
-		// 	// 	treeRaycaster.ray.direction,
-		// 	// 	treeRaycaster.ray.origin,
-		// 	// 	8,
-		// 	// 	0xff0000
-		// 	// );
-		// 	// scene.add(arr);
-		// }
+		scene.add(instancedTreeBody);
+		scene.add(instancedTreeLeaves);
 
 		renderer.shadowMap.needsUpdate = true;
-		trees = null;
+		trees = [];
 	});
 }
+

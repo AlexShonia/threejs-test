@@ -12,5 +12,32 @@ add a way to increase speed while playing
     scroll? or some keypress?
 improve your tree
     + decrease leaves resolution
-        more!
+        + more!
     improve visually
+    - Join both materials
+    + Join leaf meshes into single one
+    - Join tree and leaf into single mesh and bake a whole texture on them
+
+Optimizing models:
+    use gltfpack
+    use BASIS textures
+
+TreeGeneration
+    use mesh instancing like the monkey example: https://threejs.org/examples/#webgl_instancing_performance
+    either join the meshes or something like that
+    probably improving tree model will make the job easier
+
+    
+Fog
+    set sky.material.fog to true so its affected by fog
+    Cut the shader sphere up so that top 30% is left
+    then do the same shader somehow on it
+    so that you have blue sky and gardamavali fog too
+
+Check if sizes matches real world
+
+Big Fps Drop was caused by Terrain
+    Understand terrain generation, fix terrain to be more natural
+
+Does window.Math.random overwrite the random fro whole file?
+
