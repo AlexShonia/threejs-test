@@ -207,8 +207,8 @@ function init() {
 	//character
 	const characterLoader = new FBXLoader();
 	characterLoader.setPath("./character/");
-	characterLoader.load("character.fbx", (fbx) => {
-		fbx.scale.setScalar(0.1);
+	characterLoader.load("monster_mouse.fbx", (fbx) => {
+		fbx.scale.setScalar(0.3);
 		fbx.traverse((c) => {
 			c.castShadow = true;
 		});
@@ -301,6 +301,9 @@ function animate() {
 		charRaycaster.ray.origin.copy(character.position);
 		charRaycaster.ray.origin.y -= 10;
 
+		if (character){
+			findDirectionToPlayer();
+		}
 		const charIntersections = charRaycaster.intersectObjects(
 			scene.children,
 			false
@@ -357,10 +360,10 @@ function animate() {
 		characterDirection.normalize();
 
 		if (forward || backward) {
-			characterVelocity.z -= characterDirection.z * 400 * delta;
+			characterVelocity.z -= characterDirection.z * 200 * delta;
 		}
 		if (left || right) {
-			characterVelocity.x -= characterDirection.x * 400 * delta;
+			characterVelocity.x -= characterDirection.x * 200 * delta;
 		}
 
 		if (charOnObject === true) {
@@ -642,7 +645,6 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 			);
 			bodyOrientation.setFromEuler(randomRotation);
 
-
 			const bodyMatrix = new THREE.Matrix4();
 			bodyMatrix.compose(bodyTransformation, bodyOrientation, bodyScale);
 
@@ -687,4 +689,26 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 		renderer.shadowMap.needsUpdate = true;
 		trees = [];
 	});
+}
+
+function findDirectionToPlayer() {
+	let enemyPos = character.position
+	let playerPos = camera.position
+	if(enemyPos.x != playerPos.x || enemyPos.z != playerPos.z){
+		if(enemyPos.x < playerPos.x){
+			left = true
+			right = false
+		} else {
+			left = false
+			right = true
+		}
+
+		if(enemyPos.z < playerPos.z){
+			forward = true
+			backward = false
+		} else {
+			forward = false
+			backward = true
+		}
+	}
 }
