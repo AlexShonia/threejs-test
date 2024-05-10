@@ -13,6 +13,7 @@ let floor;
 
 const objects = [];
 let trees = [];
+let vertices = [];
 
 let raycaster;
 let mraycaster;
@@ -60,7 +61,7 @@ function init() {
 	const far = 3000;
 
 	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	camera.position.y = 730;
+	camera.position.y = 920;
 
 	scene = new THREE.Scene();
 
@@ -92,26 +93,24 @@ function init() {
 	scene.background = new THREE.Color(0xcfe2f3);
 
 	const pointLight = new THREE.PointLight(0xffad57, 20, 100, 1);
-	pointLight.position.set(0, 720, 0);
+	pointLight.position.set(0, 930, 0);
 	scene.add(pointLight);
 
 	let light = new THREE.DirectionalLight(0xe6e6e6, 0.3);
-	light.position.set(500, 3200, 10);
-	light.target.position.set(0, 0, 0);
+	light.position.set(500, 1500, 10);
+	light.target.position.set(0, 900, 0);
 	light.castShadow = true;
 	light.shadow.bias = -0.001;
 	light.shadow.mapSize.width = 1024;
 	light.shadow.mapSize.height = 1024;
-	light.shadow.camera.near = 0.1;
-	light.shadow.camera.far = 2000.0;
-	light.shadow.camera.near = 2000;
+	light.shadow.camera.near = 100;
 	light.shadow.camera.far = 3500.0;
 	light.shadow.camera.left = 3000;
 	light.shadow.camera.right = -3000;
 	light.shadow.camera.top = 3000;
 	light.shadow.camera.bottom = -3000;
 	scene.add(light);
-	// let lightHelper = new THREE.DirectionalLightHelper(light, 5);
+	// let lightHelper = new THREE.DirectionalLightHelper(light, 50);
 	// scene.add(lightHelper);
 
 	const ambLight = new THREE.AmbientLight(0xdbdbdb, 0.1);
@@ -159,7 +158,7 @@ function init() {
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
 		0,
-		10
+		100
 	);
 
 	// floor
@@ -167,7 +166,7 @@ function init() {
 
 	// trees
 	// generateTrees(0, 25, "treeCobweb1.glb");
-	generateTrees(300, 800, "tree-op4.glb");
+	generateTrees(vertices.length / 3, 800, "tree-op4.glb");
 
 	document.addEventListener("keydown", (event) => {
 		switch (event.code) {
@@ -213,8 +212,8 @@ function init() {
 		fbx.traverse((c) => {
 			c.castShadow = true;
 		});
-		fbx.position.y = 995;
-		fbx.position.x = -60;
+		fbx.position.y = 920;
+		fbx.position.x = -10;
 		character = fbx;
 
 		// const anim = new FBXLoader();
@@ -307,13 +306,9 @@ function animate() {
 			false
 		);
 		const intersections = raycaster.intersectObjects(scene.children, false);
-		// console.log("camera: ", controls.getObject().position.y);
-		// console.log("intersection: ", intersections[0]?.point.y);
-
 		if (intersections[0]) {
 			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
 		}
-		// console.log(controls.getObject().position.y);
 
 		if (arrowEnabled) {
 			let arrow = new THREE.ArrowHelper(
@@ -438,35 +433,6 @@ document.addEventListener(
 	false
 );
 
-function generateHeight(width, height) {
-	let seed = Math.PI / 4;
-	window.Math.random = function () {
-		const x = Math.sin(seed++) * 10000;
-		return x - Math.floor(x);
-	};
-
-	const size = width * height,
-		data = new Uint8Array(size);
-	const perlin = new ImprovedNoise(),
-		z = Math.random() * 100;
-
-	let quality = 1;
-
-	for (let j = 0; j < 4; j++) {
-		for (let i = 0; i < size; i++) {
-			const x = i % width,
-				y = ~~(i / width);
-			data[i] += Math.abs(
-				perlin.noise(x / quality, y / quality, z) * quality * 1.75
-			);
-		}
-
-		quality *= 5;
-	}
-
-	return data;
-}
-
 function playerControls() {
 	controls = new PointerLockControls(camera, document.body);
 
@@ -547,8 +513,8 @@ function playerControls() {
 
 function generateGround() {
 	let floorGeometry = new THREE.PlaneGeometry(
-		7500,
-		7500,
+		3500,
+		3500,
 		worldWidth - 1,
 		worldDepth - 1
 	);
@@ -560,7 +526,7 @@ function generateGround() {
 
 	const data = generateHeight(worldWidth, worldDepth);
 
-	const vertices = floorGeometry.attributes.position.array;
+	vertices = floorGeometry.attributes.position.array;
 
 	for (let i = 0, j = 0, l = vertices.length; i < l; i++, j += 3) {
 		vertices[j + 1] = data[i] * 10;
@@ -588,6 +554,34 @@ function generateGround() {
 	});
 }
 
+function generateHeight(width, height) {
+	let seed = Math.PI / 4;
+	window.Math.random = function () {
+		const x = Math.sin(seed++) * 10000;
+		return x - Math.floor(x);
+	};
+
+	const size = width * height,
+		data = new Uint8Array(size);
+	const perlin = new ImprovedNoise(),
+		z = Math.random() * 100;
+
+	let quality = 1;
+
+	for (let j = 0; j < 4; j++) {
+		for (let i = 0; i < size; i++) {
+			const x = i % width,
+				y = ~~(i / width);
+			data[i] += Math.abs(
+				perlin.noise(x / quality, y / quality, z) * quality * 2.25
+			);
+		}
+
+		quality *= 5;
+	}
+
+	return data;
+}
 function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 	const modelLoader = new GLTFLoader();
 	modelLoader.load(`/models/tree/${treeName}`, function (treeModel) {
@@ -617,8 +611,15 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 		const treeRaycaster = new THREE.Raycaster();
 		let toGround = new THREE.Vector3(0, -1, 0);
 
-		for (let i = 0; i < numberOfTrees; i++) {
+		for (
+			let i = 0, j = 0, k = 1, l = 2;
+			i < numberOfTrees;
+			i++, j += 3, k += 3, l += 3
+		) {
 			// random values
+			let x = vertices[j];
+			let y = vertices[k];
+			let z = vertices[l];
 			const random = {
 				x: (Math.random() - 0.5) * treeSpawnArea,
 				y: (Math.random() - 0.5) * treeSpawnArea,
@@ -630,9 +631,9 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 			const bodyOrientation = new THREE.Quaternion();
 			const bodyScale = new THREE.Vector3(10, 10, 10);
 
-			bodyTransformation.x += random.x;
-			bodyTransformation.z += random.z;
-			bodyTransformation.y = 1300;
+			bodyTransformation.x += x + (Math.random() - 0.5) * 40;
+			bodyTransformation.z += z + (Math.random() - 0.5) * 40;
+			bodyTransformation.y = y;
 
 			const randomRotation = new THREE.Euler(
 				treeBodyModel.rotation.x,
@@ -641,21 +642,6 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 			);
 			bodyOrientation.setFromEuler(randomRotation);
 
-			treeRaycaster.set(bodyTransformation, toGround);
-			const grIntersect = treeRaycaster.intersectObject(floor);
-
-			if (grIntersect.length > 0) {
-				bodyTransformation.y -= grIntersect[0].distance;
-			}
-
-			// const arr = new THREE.ArrowHelper(
-			// 	treeRaycaster.ray.direction,
-			// 	treeRaycaster.ray.origin,
-			// 	50,
-			// 	0xff0000
-			// );
-
-			// scene.add(arr);
 
 			const bodyMatrix = new THREE.Matrix4();
 			bodyMatrix.compose(bodyTransformation, bodyOrientation, bodyScale);
@@ -666,7 +652,7 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 			const leavesTransformation = new THREE.Vector3(0, 0, 0);
 			const leavesOrientation = new THREE.Quaternion();
 			const leavesScale = new THREE.Vector3(10, 10, 10);
-			
+
 			// setting them back to orginal matrix
 			const randomLeavesRotation = new THREE.Euler(
 				treeLeavesModel.rotation.x,
@@ -702,4 +688,3 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 		trees = [];
 	});
 }
-

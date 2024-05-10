@@ -23,9 +23,10 @@ Optimizing models:
     use BASIS textures
 
 TreeGeneration
-    use mesh instancing like the monkey example: https://threejs.org/examples/#webgl_instancing_performance
-    either join the meshes or something like that
-    probably improving tree model will make the job easier
+    + use mesh instancing like the monkey example: https://threejs.org/examples/#webgl_instancing_performance
+    + either join the meshes or something like that
+    + probably improving tree model will make the job easier
+    + use floorGeometry vertices to generate them
 
     
 Fog
@@ -37,7 +38,8 @@ Fog
 Check if sizes matches real world
 
 Big Fps Drop was caused by Terrain
-    Understand terrain generation, fix terrain to be more natural
+    + Understand terrain generation, fix terrain to be more natural
 
 Does window.Math.random overwrite the random fro whole file?
 
+Diversify trees by having some without leaves
