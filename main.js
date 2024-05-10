@@ -214,15 +214,16 @@ function init() {
 		});
 		fbx.position.y = 920;
 		fbx.position.x = -10;
+
 		character = fbx;
 
-		// const anim = new FBXLoader();
-		// anim.setPath("./character/");
-		// anim.load("sword and shield walk (2).fbx", (anim) => {
-		// 	mixer = new THREE.AnimationMixer(fbx);
-		// 	const sheath = mixer.clipAction(anim.animations[0]);
-		// 	sheath.play();
-		// });
+		const anim = new FBXLoader();
+		anim.setPath("./character/");
+		anim.load("monster_running.fbx", (anim) => {
+			mixer = new THREE.AnimationMixer(fbx);
+			const sheath = mixer.clipAction(anim.animations[0]);
+			sheath.play();
+		});
 
 		scene.add(fbx);
 	});
@@ -301,7 +302,7 @@ function animate() {
 		charRaycaster.ray.origin.copy(character.position);
 		charRaycaster.ray.origin.y -= 10;
 
-		if (character){
+		if (character) {
 			findDirectionToPlayer();
 		}
 		const charIntersections = charRaycaster.intersectObjects(
@@ -326,7 +327,7 @@ function animate() {
 		const onObject = intersections.length > 0;
 
 		const delta = (time - prevTime) / 1000;
-		// mixer.update(delta);
+		mixer.update(delta);
 
 		velocity.x -= velocity.x * 5.0 * delta;
 		velocity.z -= velocity.z * 5.0 * delta;
@@ -692,23 +693,25 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 }
 
 function findDirectionToPlayer() {
-	let enemyPos = character.position
-	let playerPos = camera.position
-	if(enemyPos.x != playerPos.x || enemyPos.z != playerPos.z){
-		if(enemyPos.x < playerPos.x){
-			left = true
-			right = false
-		} else {
-			left = false
-			right = true
-		}
+	let enemyPos = character.position;
+	let playerPos = camera.position;
 
-		if(enemyPos.z < playerPos.z){
-			forward = true
-			backward = false
+	character.lookAt(playerPos.x, enemyPos.y, playerPos.z)
+
+	if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
+		if (enemyPos.x < playerPos.x) {
+			left = true;
+			right = false;
 		} else {
-			forward = false
-			backward = true
+			left = false;
+			right = true;
+		}
+		if (enemyPos.z < playerPos.z) {
+			forward = true;
+			backward = false;
+		} else {
+			forward = false;
+			backward = true;
 		}
 	}
 }
