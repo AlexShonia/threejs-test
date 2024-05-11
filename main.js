@@ -56,8 +56,7 @@ init();
 animate();
 
 function init() {
-	
-	punchSound = new Audio('/character/slapSound.ogg')
+	punchSound = new Audio("/character/slapSound.ogg");
 	// fps and ms
 
 	stats = new Stats();
@@ -325,8 +324,14 @@ function animate() {
 		charRaycaster.ray.origin.copy(character.position);
 		charRaycaster.ray.origin.y -= 0;
 
-		if(health <= 0){
-			location.reload()
+		if (health <= 0) {
+			camera.position.set(0, 920, 0);
+			character.position.set(0, 980, -180);
+
+			blocker.style.display = "block";
+			instructions.style.display = "";
+			controls.unlock()
+			health = 100;
 		}
 		if (character) {
 			findDirectionToPlayer();
@@ -747,7 +752,7 @@ function findDirectionToPlayer() {
 			attackTime += 0.1;
 
 			if (attackTime > 6) {
-				punchSound.play()
+				punchSound.play();
 				health -= 25;
 				healthBar.style.width = `${health * 2}px`;
 				attackTime = 0;
