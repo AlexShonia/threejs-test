@@ -19,6 +19,7 @@ let raycaster;
 let mraycaster;
 let charRaycaster;
 let animations = {};
+let enemyCenterPoint = new THREE.Vector3();
 
 let moveForward = false;
 let moveBackward = false;
@@ -707,12 +708,13 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 function findDirectionToPlayer() {
 	let enemyPos = character.position;
 	let playerPos = camera.position;
+	enemyCenterPoint.set(enemyPos.x, enemyPos.y + 10, enemyPos.z);
 
 	animations["running"].action.play();
 	character.lookAt(playerPos.x, enemyPos.y, playerPos.z);
 	// let distX = Math.abs(playerPos.x - enemyPos.x);
 	// let distY = Math.abs(playerPos.y - enemyPos.y);
-	let distance = playerPos.distanceTo(enemyPos)
+	let distance = enemyCenterPoint.distanceTo(playerPos);
 
 	if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
 		if (enemyPos.x < playerPos.x) {
@@ -730,7 +732,7 @@ function findDirectionToPlayer() {
 			backward = true;
 		}
 
-		if (distance < 50) {
+		if (distance < 30) {
 			left = false;
 			right = false;
 			forward = false;
