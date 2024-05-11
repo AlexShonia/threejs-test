@@ -20,6 +20,9 @@ let mraycaster;
 let charRaycaster;
 let animations = {};
 let enemyCenterPoint = new THREE.Vector3();
+let health = 100;
+let healthBar;
+let attackTime = 0;
 
 let moveForward = false;
 let moveBackward = false;
@@ -47,11 +50,14 @@ let aspectRatio;
 let arrowEnabled = false;
 
 let mixer;
+let punchSound;
 
 init();
 animate();
 
 function init() {
+	
+	punchSound = new Audio('/character/slapSound.ogg')
 	// fps and ms
 
 	stats = new Stats();
@@ -214,8 +220,8 @@ function init() {
 		fbx.traverse((c) => {
 			c.castShadow = true;
 		});
-		fbx.position.y = 920;
-		fbx.position.x = -10;
+		fbx.position.y = 940;
+		fbx.position.z = -180;
 
 		character = fbx;
 
@@ -289,6 +295,8 @@ function init() {
 		objects.push(box);
 	}
 
+	healthBar = document.getElementById("healthBar");
+
 	aspectRatio = 1;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.shadowMap.enabled = true;
@@ -317,6 +325,9 @@ function animate() {
 		charRaycaster.ray.origin.copy(character.position);
 		charRaycaster.ray.origin.y -= 0;
 
+		if(health <= 0){
+			location.reload()
+		}
 		if (character) {
 			findDirectionToPlayer();
 		}
@@ -376,10 +387,10 @@ function animate() {
 		characterDirection.normalize();
 
 		if (forward || backward) {
-			characterVelocity.z -= characterDirection.z * 200 * delta;
+			characterVelocity.z -= characterDirection.z * 400 * delta;
 		}
 		if (left || right) {
-			characterVelocity.x -= characterDirection.x * 200 * delta;
+			characterVelocity.x -= characterDirection.x * 400 * delta;
 		}
 
 		if (charOnObject === true) {
@@ -733,6 +744,15 @@ function findDirectionToPlayer() {
 		}
 
 		if (distance < 30) {
+			attackTime += 0.1;
+
+			if (attackTime > 6) {
+				punchSound.play()
+				health -= 25;
+				healthBar.style.width = `${health * 2}px`;
+				attackTime = 0;
+			}
+
 			left = false;
 			right = false;
 			forward = false;
@@ -741,6 +761,7 @@ function findDirectionToPlayer() {
 			animations["running"].action.stop();
 		} else {
 			animations["attack"].action.stop();
+			attackTime = 0;
 		}
 	}
 }
