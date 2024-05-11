@@ -18,6 +18,7 @@ let vertices = [];
 let raycaster;
 let mraycaster;
 let charRaycaster;
+let animations = {};
 
 let moveForward = false;
 let moveBackward = false;
@@ -217,12 +218,25 @@ function init() {
 
 		character = fbx;
 
+		mixer = new THREE.AnimationMixer(fbx);
 		const anim = new FBXLoader();
 		anim.setPath("./character/");
-		anim.load("monster_running.fbx", (anim) => {
-			mixer = new THREE.AnimationMixer(fbx);
-			const sheath = mixer.clipAction(anim.animations[0]);
-			sheath.play();
+		anim.load("monster_running.fbx", (a) => {
+			const clip = a.animations[0];
+			const action = mixer.clipAction(clip);
+			animations["running"] = {
+				clip: clip,
+				action: action,
+			};
+		});
+
+		anim.load("monster_attack.fbx", (a) => {
+			const clip = a.animations[0];
+			const action = mixer.clipAction(clip);
+			animations["attack"] = {
+				clip: clip,
+				action: action,
+			};
 		});
 
 		scene.add(fbx);
@@ -300,7 +314,7 @@ function animate() {
 		raycaster.ray.origin.y -= 10;
 
 		charRaycaster.ray.origin.copy(character.position);
-		charRaycaster.ray.origin.y -= 10;
+		charRaycaster.ray.origin.y -= 0;
 
 		if (character) {
 			findDirectionToPlayer();
@@ -375,7 +389,7 @@ function animate() {
 		character.position.x += -characterVelocity.x * delta;
 
 		if (charIntersections[0]) {
-			character.position.y = charIntersections[0]?.point.y + 16.85;
+			character.position.y = charIntersections[0]?.point.y + 1.85;
 		}
 
 		character.position.y += characterVelocity.y * delta;
@@ -612,8 +626,8 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 		);
 		instancedTreeLeaves.castShadow = true;
 
-		const treeRaycaster = new THREE.Raycaster();
-		let toGround = new THREE.Vector3(0, -1, 0);
+		// const treeRaycaster = new THREE.Raycaster();
+		// let toGround = new THREE.Vector3(0, -1, 0);
 
 		for (
 			let i = 0, j = 0, k = 1, l = 2;
@@ -681,8 +695,6 @@ function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
 			);
 
 			instancedTreeLeaves.setMatrixAt(i, leavesMatrix);
-
-			// casting rays
 		}
 		scene.add(instancedTreeBody);
 		scene.add(instancedTreeLeaves);
@@ -696,7 +708,11 @@ function findDirectionToPlayer() {
 	let enemyPos = character.position;
 	let playerPos = camera.position;
 
-	character.lookAt(playerPos.x, enemyPos.y, playerPos.z)
+	animations["running"].action.play();
+	character.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+	// let distX = Math.abs(playerPos.x - enemyPos.x);
+	// let distY = Math.abs(playerPos.y - enemyPos.y);
+	let distance = playerPos.distanceTo(enemyPos)
 
 	if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
 		if (enemyPos.x < playerPos.x) {
@@ -712,6 +728,17 @@ function findDirectionToPlayer() {
 		} else {
 			forward = false;
 			backward = true;
+		}
+
+		if (distance < 50) {
+			left = false;
+			right = false;
+			forward = false;
+			backward = false;
+			animations["attack"].action.play();
+			animations["running"].action.stop();
+		} else {
+			animations["attack"].action.stop();
 		}
 	}
 }
