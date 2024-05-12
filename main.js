@@ -7,12 +7,12 @@ import {
 	ImprovedNoise,
 } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
+import generateTrees from "./world";
 
-let camera, scene, renderer, controls, stats;
+let camera, scene, renderer, controls, stats, delta;
 let floor;
 
 const objects = [];
-let trees = [];
 let vertices = [];
 
 let raycaster;
@@ -57,6 +57,19 @@ animate();
 
 function init() {
 	punchSound = new Audio("/character/slapSound.ogg");
+
+	aspectRatio = 1;
+	renderer = new THREE.WebGLRenderer({ antialias: true });
+	renderer.shadowMap.enabled = true;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+	renderer.shadowMap.autoUpdate = false;
+	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setSize(
+		window.innerWidth * aspectRatio,
+		window.innerHeight * aspectRatio,
+		false
+	);
+	document.body.appendChild(renderer.domElement);
 	// fps and ms
 
 	stats = new Stats();
@@ -173,7 +186,6 @@ function init() {
 
 	// trees
 	// generateTrees(0, 25, "treeCobweb1.glb");
-	generateTrees(vertices.length / 3, 800, "tree-op4.glb");
 
 	document.addEventListener("keydown", (event) => {
 		switch (event.code) {
@@ -296,19 +308,14 @@ function init() {
 
 	healthBar = document.getElementById("healthBar");
 
-	aspectRatio = 1;
-	renderer = new THREE.WebGLRenderer({ antialias: true });
-	renderer.shadowMap.enabled = true;
-	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-	renderer.shadowMap.autoUpdate = false;
-	renderer.setPixelRatio(window.devicePixelRatio);
-	renderer.setSize(
-		window.innerWidth * aspectRatio,
-		window.innerHeight * aspectRatio,
-		false
+	generateTrees(
+		vertices.length / 3,
+		800,
+		"tree-op4.glb",
+		scene,
+		vertices,
+		renderer
 	);
-	document.body.appendChild(renderer.domElement);
-
 	window.addEventListener("resize", onWindowResize);
 }
 
@@ -316,6 +323,7 @@ function animate() {
 	requestAnimationFrame(animate);
 
 	const time = performance.now();
+	delta = (time - prevTime) / 1000;
 	stats.update();
 	if (controls.isLocked === true) {
 		raycaster.ray.origin.copy(controls.getObject().position);
@@ -330,7 +338,7 @@ function animate() {
 
 			blocker.style.display = "block";
 			instructions.style.display = "";
-			controls.unlock()
+			controls.unlock();
 			health = 100;
 		}
 		if (character) {
@@ -357,7 +365,6 @@ function animate() {
 		const charOnObject = charIntersections.length > 0;
 		const onObject = intersections.length > 0;
 
-		const delta = (time - prevTime) / 1000;
 		mixer.update(delta);
 
 		velocity.x -= velocity.x * 5.0 * delta;
@@ -617,109 +624,6 @@ function generateHeight(width, height) {
 
 	return data;
 }
-function generateTrees(numberOfTrees, treeSpawnArea, treeName) {
-	const modelLoader = new GLTFLoader();
-	modelLoader.load(`/models/tree/${treeName}`, function (treeModel) {
-		// treeModel.scene.traverse((child) => {
-		// 	if (child.isMesh) {
-		// 		child.castShadow = true;
-		// 	}
-		// });
-
-		const treeBodyModel = treeModel.scene.children[0];
-		const treeLeavesModel = treeModel.scene.children[1];
-
-		const instancedTreeBody = new THREE.InstancedMesh(
-			treeBodyModel.geometry,
-			treeBodyModel.material,
-			numberOfTrees
-		);
-		instancedTreeBody.castShadow = true;
-
-		const instancedTreeLeaves = new THREE.InstancedMesh(
-			treeLeavesModel.geometry,
-			treeLeavesModel.material,
-			numberOfTrees
-		);
-		instancedTreeLeaves.castShadow = true;
-
-		// const treeRaycaster = new THREE.Raycaster();
-		// let toGround = new THREE.Vector3(0, -1, 0);
-
-		for (
-			let i = 0, j = 0, k = 1, l = 2;
-			i < numberOfTrees;
-			i++, j += 3, k += 3, l += 3
-		) {
-			// random values
-			let x = vertices[j];
-			let y = vertices[k];
-			let z = vertices[l];
-			const random = {
-				x: (Math.random() - 0.5) * treeSpawnArea,
-				y: (Math.random() - 0.5) * treeSpawnArea,
-				z: (Math.random() - 0.5) * treeSpawnArea,
-			};
-
-			// body
-			const bodyTransformation = new THREE.Vector3(0, 0, 0);
-			const bodyOrientation = new THREE.Quaternion();
-			const bodyScale = new THREE.Vector3(10, 10, 10);
-
-			bodyTransformation.x += x + (Math.random() - 0.5) * 40;
-			bodyTransformation.z += z + (Math.random() - 0.5) * 40;
-			bodyTransformation.y = y;
-
-			const randomRotation = new THREE.Euler(
-				treeBodyModel.rotation.x,
-				treeBodyModel.rotation.y - random.y,
-				treeBodyModel.rotation.z
-			);
-			bodyOrientation.setFromEuler(randomRotation);
-
-			const bodyMatrix = new THREE.Matrix4();
-			bodyMatrix.compose(bodyTransformation, bodyOrientation, bodyScale);
-
-			instancedTreeBody.setMatrixAt(i, bodyMatrix);
-
-			// leaves
-			const leavesTransformation = new THREE.Vector3(0, 0, 0);
-			const leavesOrientation = new THREE.Quaternion();
-			const leavesScale = new THREE.Vector3(10, 10, 10);
-
-			// setting them back to orginal matrix
-			const randomLeavesRotation = new THREE.Euler(
-				treeLeavesModel.rotation.x,
-				treeLeavesModel.rotation.y - random.y,
-				treeLeavesModel.rotation.z
-			);
-
-			leavesOrientation.setFromEuler(randomLeavesRotation);
-
-			// console.log(randomLeavesRotation.y);
-			// console.log("--");
-			// console.log(randomRotation.y);
-
-			leavesTransformation.x += bodyTransformation.x;
-			leavesTransformation.z += bodyTransformation.z;
-			leavesTransformation.y = bodyTransformation.y;
-
-			const leavesMatrix = new THREE.Matrix4();
-			leavesMatrix.compose(
-				leavesTransformation,
-				leavesOrientation,
-				leavesScale
-			);
-
-			instancedTreeLeaves.setMatrixAt(i, leavesMatrix);
-		}
-		scene.add(instancedTreeBody);
-		scene.add(instancedTreeLeaves);
-
-		renderer.shadowMap.needsUpdate = true;
-		trees = [];
-	});
-}
 
 function findDirectionToPlayer() {
 	let enemyPos = character.position;
@@ -749,7 +653,7 @@ function findDirectionToPlayer() {
 		}
 
 		if (distance < 30) {
-			attackTime += 0.1;
+			attackTime += 6 * delta;
 
 			if (attackTime > 6) {
 				punchSound.play();
