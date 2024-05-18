@@ -23,6 +23,7 @@ let enemyCenterPoint = new THREE.Vector3();
 let health = 100;
 let healthBar;
 let attackTime = 0;
+let playerSpeed = 400;
 
 let moveForward = false;
 let moveBackward = false;
@@ -57,6 +58,7 @@ animate();
 
 function init() {
 	punchSound = new Audio("/character/slapSound.ogg");
+	punchSound.volume = 0.5;
 
 	aspectRatio = 1;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -308,6 +310,15 @@ function init() {
 
 	healthBar = document.getElementById("healthBar");
 
+	document.addEventListener("wheel", (event) => {
+		if (event.deltaY < 0) {
+			playerSpeed += 50;
+		}
+		if (event.deltaY > 0) {
+			playerSpeed -= 50;
+		}
+	});
+
 	generateTrees(
 		vertices.length / 3,
 		800,
@@ -378,8 +389,9 @@ function animate() {
 		event;
 
 		if (moveForward || moveBackward)
-			velocity.z -= direction.z * 400.0 * delta;
-		if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+			velocity.z -= direction.z * playerSpeed * delta;
+		if (moveLeft || moveRight)
+			velocity.x -= direction.x * playerSpeed * delta;
 
 		if (onObject === true) {
 			velocity.y = Math.max(0, velocity.y);
