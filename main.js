@@ -326,7 +326,6 @@ function animate() {
 	delta = (time - prevTime) / 1000;
 	stats.update();
 
-	console.log("enemy: ", character.position);
 	if (controls.isLocked === true) {
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
