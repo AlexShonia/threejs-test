@@ -325,22 +325,23 @@ function animate() {
 	const time = performance.now();
 	delta = (time - prevTime) / 1000;
 	stats.update();
+
+	console.log("enemy: ", character.position);
 	if (controls.isLocked === true) {
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
 
 		charRaycaster.ray.origin.copy(character.position);
-		charRaycaster.ray.origin.y -= 0;
+		charRaycaster.ray.origin.y += 3;
 
-		if (health <= 0) {
-			camera.position.set(0, 920, 0);
-			character.position.set(0, 980, -180);
+		// let arrow = new THREE.ArrowHelper(
+		// 	charRaycaster.ray.direction,
+		// 	charRaycaster.ray.origin,
+		// 	8,
+		// 	0xff0000
+		// );
+		// scene.add(arrow);
 
-			blocker.style.display = "block";
-			instructions.style.display = "";
-			controls.unlock();
-			health = 100;
-		}
 		if (character) {
 			findDirectionToPlayer();
 		}
@@ -434,6 +435,16 @@ function animate() {
 
 			canJump = true;
 		}
+	}
+
+	if (health <= 0) {
+		camera.position.set(0, 920, 0);
+		character.position.set(0, 940, -180);
+
+		blocker.style.display = "block";
+		instructions.style.display = "";
+		controls.unlock();
+		health = 100;
 	}
 
 	prevTime = time;
@@ -653,9 +664,9 @@ function findDirectionToPlayer() {
 		}
 
 		if (distance < 30) {
-			attackTime += 6 * delta;
+			attackTime += 5 * delta;
 
-			if (attackTime > 6) {
+			if (attackTime > 5) {
 				punchSound.play();
 				health -= 25;
 				healthBar.style.width = `${health * 2}px`;
