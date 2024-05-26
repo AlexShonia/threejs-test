@@ -1,39 +1,32 @@
 import * as THREE from "three";
 
-import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import {
 	GLTFLoader,
 	FBXLoader,
 	ImprovedNoise,
 } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
-import generateTrees from "./world";
-import { loadingManager } from "./loader";
+import generateTrees from "./src/world";
+import { loadingManager } from "./src/loader";
+import Player from "./src/player";
 
 let camera, scene, renderer, controls, stats, delta;
 let floor;
+let player;
 
 const objects = [];
 let vertices = [];
 
-let raycaster;
 let mraycaster;
 let charRaycaster;
 let animations = {};
 let enemyCenterPoint = new THREE.Vector3();
-let health = 100;
 let healthBar;
 let attackTime = 0;
 let playerSpeed = 400;
 let axe;
 let characterMixer;
 let attackAnimationPlaying = false;
-
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let canJump = false;
 
 let character;
 let forward = false;
@@ -44,15 +37,11 @@ const characterVelocity = new THREE.Vector3();
 const characterDirection = new THREE.Vector3();
 
 let prevTime = performance.now();
-const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
 const color = new THREE.Color();
 
 const worldWidth = 64,
 	worldDepth = 64;
 let aspectRatio;
-
-let arrowEnabled = false;
 
 let mixer;
 let punchSound;
@@ -87,10 +76,10 @@ function init() {
 	const near = 1.0;
 	const far = 3000;
 
-	camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-	camera.position.y = 920;
-
 	scene = new THREE.Scene();
+
+	const startingPosition = new THREE.Vector3(0, 920, 0);
+	player = new Player(scene, startingPosition);
 
 	const uniforms = {
 		topColor: { value: new THREE.Color(0x94bae0) },
@@ -101,7 +90,6 @@ function init() {
 
 	scene.fog = new THREE.Fog(0xadc2d5, 0, 600);
 
-	// scene.fog.color.copy(uniforms["bottomColor"].value);
 	const vertexShader = document.getElementById("vertexShader").textContent;
 	const fragmentShader =
 		document.getElementById("fragmentShader").textContent;
@@ -156,23 +144,6 @@ function init() {
 	// 	]);
 	// scene.background = sky1;
 	// scene.environment = sky1;
-
-	playerControls();
-
-	function toggleArrow() {
-		arrowEnabled = !arrowEnabled;
-	}
-
-	let toggleButton = document.getElementById("toggle");
-
-	toggleButton.addEventListener("click", toggleArrow);
-
-	raycaster = new THREE.Raycaster(
-		new THREE.Vector3(),
-		new THREE.Vector3(0, -1, 0),
-		0,
-		10
-	);
 
 	charRaycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
@@ -272,7 +243,7 @@ function init() {
 	weaponLoader.load("/weapons/Axe.glb", (weapon) => {
 		weapon.scene.scale.setScalar(40);
 		axe = weapon.scene;
-		weapon.scene.position.y = camera.position.y;
+		weapon.scene.position.y = player.camera.position.y;
 
 		characterMixer = new THREE.AnimationMixer(weapon.scene);
 		const clip = weapon.animations[0];
@@ -363,15 +334,15 @@ function animate() {
 	delta = (time - prevTime) / 1000;
 	stats.update();
 
-	if (controls.isLocked === true) {
+	if (player.controls.isLocked === true) {
 		let camdirection = new THREE.Vector3();
-		camera.getWorldDirection(camdirection);
+		player.camera.getWorldDirection(camdirection);
 
-		axe.position.x = camera.position.x + camdirection.x * 15;
-		axe.position.y = camera.position.y + camdirection.y * 15;
-		axe.position.z = camera.position.z + camdirection.z * 15;
+		axe.position.x = player.position.x + camdirection.x * 15;
+		axe.position.y = player.position.y + camdirection.y * 15;
+		axe.position.z = player.position.z + camdirection.z * 15;
 
-		axe.setRotationFromEuler(camera.rotation);
+		axe.setRotationFromEuler(player.rotation);
 		axe.rotateY(-Math.PI / 2);
 		axe.translateZ(-10);
 		axe.translateY(-10);
@@ -382,8 +353,7 @@ function animate() {
 		// 	console.log("camera: ", camera.rotation);
 		// }
 
-		raycaster.ray.origin.copy(controls.getObject().position);
-		raycaster.ray.origin.y -= 10;
+		player._update(delta);
 
 		charRaycaster.ray.origin.copy(character.position);
 		charRaycaster.ray.origin.y += 0;
@@ -403,49 +373,12 @@ function animate() {
 			scene.children,
 			false
 		);
-		const intersections = raycaster.intersectObjects(scene.children, false);
-		if (intersections[0]) {
-			controls.getObject().position.y = intersections[0]?.point.y + 16.85;
-		}
 
-		if (arrowEnabled) {
-			let arrow = new THREE.ArrowHelper(
-				raycaster.ray.direction,
-				raycaster.ray.origin,
-				8,
-				0xff0000
-			);
-			scene.add(arrow);
-		}
 		const charOnObject = charIntersections.length > 0;
-		const onObject = intersections.length > 0;
 
 		mixer.update(delta);
 		characterMixer.update(delta);
 
-		velocity.x -= velocity.x * 5.0 * delta;
-		velocity.z -= velocity.z * 5.0 * delta;
-
-		velocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-		direction.z = Number(moveForward) - Number(moveBackward);
-		direction.x = Number(moveRight) - Number(moveLeft);
-		direction.normalize(); // this ensures consistent movements in all directions
-		event;
-
-		if (moveForward || moveBackward)
-			velocity.z -= direction.z * playerSpeed * delta;
-		if (moveLeft || moveRight)
-			velocity.x -= direction.x * playerSpeed * delta;
-
-		if (onObject === true) {
-			velocity.y = Math.max(0, velocity.y);
-			canJump = true;
-		}
-
-		// controls.getObject().position.y = character.position.y + 22;
-		// controls.getObject().position.x = character.position.x;
-		// controls.getObject().position.z = character.position.z - 10;
 		characterVelocity.x -= characterVelocity.x * 5.0 * delta;
 		characterVelocity.z -= characterVelocity.z * 5.0 * delta;
 
@@ -474,43 +407,16 @@ function animate() {
 		}
 
 		character.position.y += characterVelocity.y * delta;
-		// if(left){
-		// 	character.position.x += 20 * delta;
-		// }
-		// if(right){
-		// 	character.position.x -= 20 * delta;
-		// }
-		controls.moveRight(-velocity.x * delta);
-		controls.moveForward(-velocity.z * delta);
-
-		controls.getObject().position.y += velocity.y * delta; // new behavior
-
-		if (controls.getObject().position.y < intersections[0]?.point.y) {
-			velocity.y = 0;
-			controls.getObject().position.y = 10;
-
-			canJump = true;
-		}
-	}
-
-	if (health <= 0) {
-		camera.position.set(0, 920, 0);
-		character.position.set(0, 940, -180);
-
-		blocker.style.display = "block";
-		instructions.style.display = "";
-		controls.unlock();
-		health = 100;
 	}
 
 	prevTime = time;
 
-	renderer.render(scene, camera);
+	renderer.render(scene, player.camera);
 }
 
 function onWindowResize() {
-	camera.aspect = window.innerWidth / window.innerHeight;
-	camera.updateProjectionMatrix();
+	player.camera.aspect = window.innerWidth / window.innerHeight;
+	player.camera.updateProjectionMatrix();
 
 	renderer.setSize(
 		window.innerWidth / aspectRatio,
@@ -541,7 +447,7 @@ document.addEventListener(
 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
 		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-		mraycaster.setFromCamera(pointer, camera);
+		mraycaster.setFromCamera(pointer, player.camera);
 		var intersects = mraycaster.intersectObjects(scene.children);
 		// if (intersects.length > 0) {
 		// 	var marrow = new THREE.ArrowHelper(
@@ -555,84 +461,6 @@ document.addEventListener(
 	},
 	false
 );
-
-function playerControls() {
-	controls = new PointerLockControls(camera, document.body);
-
-	const blocker = document.getElementById("blocker");
-	const instructions = document.getElementById("instructions");
-
-	instructions.addEventListener("click", function () {
-		controls.lock();
-	});
-
-	controls.addEventListener("lock", function () {
-		instructions.style.display = "none";
-		blocker.style.display = "none";
-	});
-
-	controls.addEventListener("unlock", function () {
-		blocker.style.display = "block";
-		instructions.style.display = "";
-	});
-
-	scene.add(controls.getObject());
-
-	const onKeyDown = function (event) {
-		switch (event.code) {
-			case "ArrowUp":
-			case "KeyW":
-				moveForward = true;
-				break;
-
-			case "ArrowLeft":
-			case "KeyA":
-				moveLeft = true;
-				break;
-
-			case "ArrowDown":
-			case "KeyS":
-				moveBackward = true;
-				break;
-
-			case "ArrowRight":
-			case "KeyD":
-				moveRight = true;
-				break;
-
-			case "Space":
-				velocity.y += 350;
-				canJump = false;
-				break;
-		}
-	};
-
-	const onKeyUp = function (event) {
-		switch (event.code) {
-			case "ArrowUp":
-			case "KeyW":
-				moveForward = false;
-				break;
-
-			case "ArrowLeft":
-			case "KeyA":
-				moveLeft = false;
-				break;
-
-			case "ArrowDown":
-			case "KeyS":
-				moveBackward = false;
-				break;
-
-			case "ArrowRight":
-			case "KeyD":
-				moveRight = false;
-				break;
-		}
-	};
-	document.addEventListener("keydown", onKeyDown);
-	document.addEventListener("keyup", onKeyUp);
-}
 
 function generateGround() {
 	let floorGeometry = new THREE.PlaneGeometry(
@@ -708,7 +536,7 @@ function generateHeight(width, height) {
 
 function findDirectionToPlayer() {
 	let enemyPos = character.position;
-	let playerPos = camera.position;
+	let playerPos = player.camera.position;
 	enemyCenterPoint.set(enemyPos.x, enemyPos.y + 10, enemyPos.z);
 
 	animations["running"].action.play();
@@ -736,8 +564,8 @@ function findDirectionToPlayer() {
 
 			if (attackTime > 5) {
 				punchSound.play();
-				health -= 25;
-				healthBar.style.width = `${health * 2}px`;
+				player.health -= 25;
+				healthBar.style.width = `${player.health * 2}px`;
 				attackTime = 0;
 			}
 

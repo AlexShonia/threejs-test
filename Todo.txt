@@ -28,6 +28,7 @@ TreeGeneration
     + probably improving tree model will make the job easier
     + use floorGeometry vertices to generate them
 
+add custom Print function with framecount
     
 Fog
     set sky.material.fog to true so its affected by fog
