@@ -8,6 +8,7 @@ import {
 } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import generateTrees from "./world";
+import { loadingManager } from "./loader";
 
 let camera, scene, renderer, controls, stats, delta;
 let floor;
@@ -24,6 +25,9 @@ let health = 100;
 let healthBar;
 let attackTime = 0;
 let playerSpeed = 400;
+let axe;
+let characterMixer;
+let attackAnimationPlaying = false;
 
 let moveForward = false;
 let moveBackward = false;
@@ -52,13 +56,14 @@ let arrowEnabled = false;
 
 let mixer;
 let punchSound;
+let frameCount = 0;
 
 init();
 animate();
 
 function init() {
 	punchSound = new Audio("/character/slapSound.ogg");
-	punchSound.volume = 0.5;
+	punchSound.volume = 0.1;
 
 	aspectRatio = 1;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -173,7 +178,7 @@ function init() {
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
 		0,
-		10
+		15
 	);
 
 	mraycaster = new THREE.Raycaster(
@@ -226,20 +231,20 @@ function init() {
 	});
 
 	//character
-	const characterLoader = new FBXLoader();
-	characterLoader.setPath("./character/");
-	characterLoader.load("monster_mouse.fbx", (fbx) => {
-		fbx.scale.setScalar(0.3);
+	const orcLoader = new FBXLoader(loadingManager);
+	orcLoader.load("Orc.fbx", (fbx) => {
+		fbx.scale.setScalar(0.2);
 		fbx.traverse((c) => {
 			c.castShadow = true;
 		});
+
 		fbx.position.y = 940;
 		fbx.position.z = -180;
 
 		character = fbx;
 
 		mixer = new THREE.AnimationMixer(fbx);
-		const anim = new FBXLoader();
+		const anim = new FBXLoader(loadingManager);
 		anim.setPath("./character/");
 		anim.load("monster_running.fbx", (a) => {
 			const clip = a.animations[0];
@@ -260,6 +265,26 @@ function init() {
 		});
 
 		scene.add(fbx);
+	});
+	// Weapon
+
+	const weaponLoader = new GLTFLoader(loadingManager);
+	weaponLoader.load("/weapons/Axe.glb", (weapon) => {
+		weapon.scene.scale.setScalar(40);
+		axe = weapon.scene;
+		weapon.scene.position.y = camera.position.y;
+
+		characterMixer = new THREE.AnimationMixer(weapon.scene);
+		const clip = weapon.animations[0];
+		const action = characterMixer.clipAction(clip);
+
+		action.setLoop(THREE.LoopOnce);
+
+		animations["axeSwing"] = {
+			clip: clip,
+			action: action,
+		};
+		scene.add(axe);
 	});
 
 	// objects
@@ -331,6 +356,7 @@ function init() {
 }
 
 function animate() {
+	frameCount++;
 	requestAnimationFrame(animate);
 
 	const time = performance.now();
@@ -338,11 +364,29 @@ function animate() {
 	stats.update();
 
 	if (controls.isLocked === true) {
+		let camdirection = new THREE.Vector3();
+		camera.getWorldDirection(camdirection);
+
+		axe.position.x = camera.position.x + camdirection.x * 15;
+		axe.position.y = camera.position.y + camdirection.y * 15;
+		axe.position.z = camera.position.z + camdirection.z * 15;
+
+		axe.setRotationFromEuler(camera.rotation);
+		axe.rotateY(-Math.PI / 2);
+		axe.translateZ(-10);
+		axe.translateY(-10);
+
+		// if (frameCount % 60 == 0) {
+		// 	console.clear();
+		// 	console.log("axe: ", axe.rotation);
+		// 	console.log("camera: ", camera.rotation);
+		// }
+
 		raycaster.ray.origin.copy(controls.getObject().position);
 		raycaster.ray.origin.y -= 10;
 
 		charRaycaster.ray.origin.copy(character.position);
-		charRaycaster.ray.origin.y += 3;
+		charRaycaster.ray.origin.y += 0;
 
 		// let arrow = new THREE.ArrowHelper(
 		// 	charRaycaster.ray.direction,
@@ -377,6 +421,7 @@ function animate() {
 		const onObject = intersections.length > 0;
 
 		mixer.update(delta);
+		characterMixer.update(delta);
 
 		velocity.x -= velocity.x * 5.0 * delta;
 		velocity.z -= velocity.z * 5.0 * delta;
@@ -425,7 +470,7 @@ function animate() {
 		character.position.x += -characterVelocity.x * delta;
 
 		if (charIntersections[0]) {
-			character.position.y = charIntersections[0]?.point.y + 1.85;
+			character.position.y = charIntersections[0]?.point.y + 8.85;
 		}
 
 		character.position.y += characterVelocity.y * delta;
@@ -479,6 +524,20 @@ var pointer = new THREE.Vector2();
 document.addEventListener(
 	"mousedown",
 	function (event) {
+		if (!attackAnimationPlaying) {
+			attackAnimationPlaying = true;
+			animations["axeSwing"].action.play();
+			animations["axeSwing"].action.time = 0;
+			animations["axeSwing"].action.paused = false;
+			animations["axeSwing"].action.enabled = true;
+
+			animations["axeSwing"].action
+				.getMixer()
+				.addEventListener("finished", function () {
+					attackAnimationPlaying = false;
+				});
+		}
+
 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
 		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -488,7 +547,7 @@ document.addEventListener(
 			var marrow = new THREE.ArrowHelper(
 				mraycaster.ray.direction,
 				mraycaster.ray.origin,
-				8,
+				20,
 				0xff0000
 			);
 			scene.add(marrow);
