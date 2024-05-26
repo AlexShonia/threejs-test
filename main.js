@@ -543,15 +543,15 @@ document.addEventListener(
 
 		mraycaster.setFromCamera(pointer, camera);
 		var intersects = mraycaster.intersectObjects(scene.children);
-		if (intersects.length > 0) {
-			var marrow = new THREE.ArrowHelper(
-				mraycaster.ray.direction,
-				mraycaster.ray.origin,
-				20,
-				0xff0000
-			);
-			scene.add(marrow);
-		}
+		// if (intersects.length > 0) {
+		// 	var marrow = new THREE.ArrowHelper(
+		// 		mraycaster.ray.direction,
+		// 		mraycaster.ray.origin,
+		// 		20,
+		// 		0xff0000
+		// 	);
+		// 	scene.add(marrow);
+		// }
 	},
 	false
 );
@@ -713,8 +713,6 @@ function findDirectionToPlayer() {
 
 	animations["running"].action.play();
 	character.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-	// let distX = Math.abs(playerPos.x - enemyPos.x);
-	// let distY = Math.abs(playerPos.y - enemyPos.y);
 	let distance = enemyCenterPoint.distanceTo(playerPos);
 
 	if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
