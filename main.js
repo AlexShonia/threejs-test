@@ -210,10 +210,10 @@ function init() {
 
 	document.addEventListener("wheel", (event) => {
 		if (event.deltaY < 0) {
-			playerSpeed += 50;
+			player.speed += 50;
 		}
 		if (event.deltaY > 0) {
-			playerSpeed -= 50;
+			player.speed -= 50;
 		}
 	});
 
@@ -277,7 +277,7 @@ function onWindowResize() {
 	);
 }
 
-var pointer = new THREE.Vector2();
+let pointer = new THREE.Vector2();
 
 document.addEventListener(
 	"mousedown",
@@ -296,23 +296,25 @@ document.addEventListener(
 				});
 			setTimeout(() => {
 				axeSwing.play();
+				mraycaster.setFromCamera(pointer, player.camera);
+				let intersects = mraycaster.intersectObjects(
+					orc.model.children
+				);
+				if (intersects.length > 0) {
+					orc.health -= 50;
+					// var marrow = new THREE.ArrowHelper(
+					// 	mraycaster.ray.direction,
+					// 	mraycaster.ray.origin,
+					// 	20,
+					// 	0xff0000
+					// );
+					// scene.add(marrow);
+				}
 			}, 500);
 		}
 
 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
 		pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-		mraycaster.setFromCamera(pointer, player.camera);
-		var intersects = mraycaster.intersectObjects(scene.children);
-		// if (intersects.length > 0) {
-		// 	var marrow = new THREE.ArrowHelper(
-		// 		mraycaster.ray.direction,
-		// 		mraycaster.ray.origin,
-		// 		20,
-		// 		0xff0000
-		// 	);
-		// 	scene.add(marrow);
-		// }
 	},
 	false
 );

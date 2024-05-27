@@ -7,7 +7,7 @@ export default class Orc extends Enemy {
 		super();
 		this.health = 100;
 		this.speed = 400;
-		this.damage = 25;
+		this.damage = 0.5;
 		this.scene = scene;
 		this.loadModel();
 		this.position = startingPosition;
@@ -43,6 +43,7 @@ export default class Orc extends Enemy {
 			animLoader.setPath("./character/");
 			this.loadAnimation(animLoader, "monster_running.fbx", "running");
 			this.loadAnimation(animLoader, "monster_attack.fbx", "attack");
+			this.loadAnimation(animLoader, "orc_death.fbx", "death");
 
 			this.scene.add(this.model);
 		});
@@ -60,48 +61,50 @@ export default class Orc extends Enemy {
 	}
 
 	findDirectionToPlayer(delta) {
-		let enemyPos = this.model.position;
-		let playerPos = this.player.camera.position;
-		this.enemyCenterPoint.set(enemyPos.x, enemyPos.y + 10, enemyPos.z);
+		if (this.health > 0) {
+			let enemyPos = this.model.position;
+			let playerPos = this.player.camera.position;
+			this.enemyCenterPoint.set(enemyPos.x, enemyPos.y + 10, enemyPos.z);
 
-		this.animations["running"].action.play();
-		this.model.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-		let distance = this.enemyCenterPoint.distanceTo(playerPos);
+			this.animations["running"].action.play();
+			this.model.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+			let distance = this.enemyCenterPoint.distanceTo(playerPos);
 
-		if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
-			if (enemyPos.x < playerPos.x) {
-				this.left = true;
-				this.right = false;
-			} else {
-				this.left = false;
-				this.right = true;
-			}
-			if (enemyPos.z < playerPos.z) {
-				this.forward = true;
-				this.backward = false;
-			} else {
-				this.forward = false;
-				this.backward = true;
-			}
-
-			if (distance < 30) {
-				this.attackTime += 5 * delta;
-
-				if (this.attackTime > 5) {
-					this.punchSound.play();
-					this.player.health -= 25;
-					this.attackTime = 0;
+			if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
+				if (enemyPos.x < playerPos.x) {
+					this.left = true;
+					this.right = false;
+				} else {
+					this.left = false;
+					this.right = true;
+				}
+				if (enemyPos.z < playerPos.z) {
+					this.forward = true;
+					this.backward = false;
+				} else {
+					this.forward = false;
+					this.backward = true;
 				}
 
-				this.left = false;
-				this.right = false;
-				this.forward = false;
-				this.backward = false;
-				this.animations["attack"].action.play();
-				this.animations["running"].action.stop();
-			} else {
-				this.animations["attack"].action.stop();
-				this.attackTime = 0;
+				if (distance < 30) {
+					this.attackTime += 5 * delta;
+
+					if (this.attackTime > 5) {
+						this.punchSound.play();
+						this.player.health -= this.damage;
+						this.attackTime = 0;
+					}
+
+					this.left = false;
+					this.right = false;
+					this.forward = false;
+					this.backward = false;
+					this.animations["attack"].action.play();
+					this.animations["running"].action.stop();
+				} else {
+					this.animations["attack"].action.stop();
+					this.attackTime = 0;
+				}
 			}
 		}
 	}
@@ -109,6 +112,15 @@ export default class Orc extends Enemy {
 	_Update(delta) {
 		this.model.position.copy(this.position);
 		this.model.rotation.copy(this.rotation);
+
+		if (this.health <= 0) {
+			this.animations["death"].action.play();
+			this.animations["attack"].action.stop();
+			this.animations["running"].action.stop();
+            setTimeout(()=> {
+                this.position.y = -900
+            }, 2800)
+		}
 
 		this.charRaycaster.ray.origin.copy(this.position);
 
