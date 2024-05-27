@@ -7,7 +7,7 @@ export default class Orc extends Enemy {
 		super();
 		this.health = 100;
 		this.speed = 400;
-		this.damage = 0.5;
+		this.damage = 25;
 		this.scene = scene;
 		this.loadModel();
 		this.position = startingPosition;
