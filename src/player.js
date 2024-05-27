@@ -8,6 +8,7 @@ export default class Player extends Entity {
 		super();
 		this.health = 100;
 		this.speed = 400;
+		this.damage = 50;
 		const fov = 60;
 		const aspect = window.innerWidth / window.innerHeight;
 		const near = 1.0;
@@ -16,6 +17,7 @@ export default class Player extends Entity {
 		this.position = startingPosition; // Set position first
 		this.camera.position.copy(this.position);
 		this.camera.setRotationFromEuler(this.rotation);
+		this.healthBar = document.getElementById("healthBar");
 
 		this.arrowEnabled = false;
 
@@ -54,9 +56,13 @@ export default class Player extends Entity {
 		this.blocker = document.getElementById("blocker");
 		this.instructions = document.getElementById("instructions");
 
-		this.instructions.addEventListener("click", () => {
-			this.controls.lock();
-		}, false);
+		this.instructions.addEventListener(
+			"click",
+			() => {
+				this.controls.lock();
+			},
+			false
+		);
 
 		this.controls.addEventListener("lock", () => {
 			this.instructions.style.display = "none";
@@ -127,6 +133,8 @@ export default class Player extends Entity {
 	}
 
 	_update(delta) {
+		// TODO: may be innficient checking healthbar every fame?
+		this.healthBar.style.width = `${this.health * 2}px`;
 		this.position.copy(this.camera.position);
 		this.rotation.copy(this.camera.rotation);
 		this.raycaster.ray.origin.copy(this.controls.getObject().position);

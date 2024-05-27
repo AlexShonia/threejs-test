@@ -1,40 +1,26 @@
 import * as THREE from "three";
 
-import {
-	GLTFLoader,
-	FBXLoader,
-	ImprovedNoise,
-} from "three/examples/jsm/Addons.js";
+import { GLTFLoader, ImprovedNoise } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import generateTrees from "./src/world";
-import { loadingManager } from "./src/loader";
 import Player from "./src/player";
+import Orc from "./src/orc";
+import setupLoadingManager from "./src/loader";
 
-let camera, scene, renderer, controls, stats, delta;
+let scene, renderer, stats, delta;
 let floor;
 let player;
+const axeSwing = new Audio("/weapons/axeSwing.wav");
 
 const objects = [];
 let vertices = [];
 
 let mraycaster;
-let charRaycaster;
 let animations = {};
-let enemyCenterPoint = new THREE.Vector3();
-let healthBar;
-let attackTime = 0;
 let playerSpeed = 400;
 let axe;
 let characterMixer;
 let attackAnimationPlaying = false;
-
-let character;
-let forward = false;
-let backward = false;
-let left = false;
-let right = false;
-const characterVelocity = new THREE.Vector3();
-const characterDirection = new THREE.Vector3();
 
 let prevTime = performance.now();
 const color = new THREE.Color();
@@ -42,18 +28,16 @@ const color = new THREE.Color();
 const worldWidth = 64,
 	worldDepth = 64;
 let aspectRatio;
+let orc;
 
-let mixer;
-let punchSound;
 let frameCount = 0;
 
+setupLoadingManager();
 init();
 animate();
 
 function init() {
-	punchSound = new Audio("/character/slapSound.ogg");
-	punchSound.volume = 0.1;
-
+	axeSwing.volume = 0.5;
 	aspectRatio = 1;
 	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.shadowMap.enabled = true;
@@ -80,6 +64,9 @@ function init() {
 
 	const startingPosition = new THREE.Vector3(0, 920, 0);
 	player = new Player(scene, startingPosition);
+
+	const orcStartingPosition = new THREE.Vector3(0, 940, -180);
+	orc = new Orc(scene, orcStartingPosition, player);
 
 	const uniforms = {
 		topColor: { value: new THREE.Color(0x94bae0) },
@@ -145,13 +132,6 @@ function init() {
 	// scene.background = sky1;
 	// scene.environment = sky1;
 
-	charRaycaster = new THREE.Raycaster(
-		new THREE.Vector3(),
-		new THREE.Vector3(0, -1, 0),
-		0,
-		15
-	);
-
 	mraycaster = new THREE.Raycaster(
 		new THREE.Vector3(),
 		new THREE.Vector3(0, -1, 0),
@@ -159,87 +139,11 @@ function init() {
 		100
 	);
 
-	// floor
 	generateGround();
 
-	// trees
-	// generateTrees(0, 25, "treeCobweb1.glb");
-
-	document.addEventListener("keydown", (event) => {
-		switch (event.code) {
-			case "Numpad8":
-				forward = true;
-				break;
-			case "Numpad5":
-				backward = true;
-				break;
-			case "Numpad4":
-				left = true;
-				break;
-			case "Numpad6":
-				right = true;
-				break;
-			case "Numpad0":
-				characterVelocity.y += 250;
-				break;
-		}
-	});
-	document.addEventListener("keyup", (event) => {
-		switch (event.code) {
-			case "Numpad8":
-				forward = false;
-				break;
-			case "Numpad5":
-				backward = false;
-				break;
-			case "Numpad4":
-				left = false;
-				break;
-			case "Numpad6":
-				right = false;
-				break;
-		}
-	});
-
-	//character
-	const orcLoader = new FBXLoader(loadingManager);
-	orcLoader.load("Orc.fbx", (fbx) => {
-		fbx.scale.setScalar(0.2);
-		fbx.traverse((c) => {
-			c.castShadow = true;
-		});
-
-		fbx.position.y = 940;
-		fbx.position.z = -180;
-
-		character = fbx;
-
-		mixer = new THREE.AnimationMixer(fbx);
-		const anim = new FBXLoader(loadingManager);
-		anim.setPath("./character/");
-		anim.load("monster_running.fbx", (a) => {
-			const clip = a.animations[0];
-			const action = mixer.clipAction(clip);
-			animations["running"] = {
-				clip: clip,
-				action: action,
-			};
-		});
-
-		anim.load("monster_attack.fbx", (a) => {
-			const clip = a.animations[0];
-			const action = mixer.clipAction(clip);
-			animations["attack"] = {
-				clip: clip,
-				action: action,
-			};
-		});
-
-		scene.add(fbx);
-	});
 	// Weapon
 
-	const weaponLoader = new GLTFLoader(loadingManager);
+	const weaponLoader = new GLTFLoader();
 	weaponLoader.load("/weapons/Axe.glb", (weapon) => {
 		weapon.scene.scale.setScalar(40);
 		axe = weapon.scene;
@@ -304,8 +208,6 @@ function init() {
 		objects.push(box);
 	}
 
-	healthBar = document.getElementById("healthBar");
-
 	document.addEventListener("wheel", (event) => {
 		if (event.deltaY < 0) {
 			playerSpeed += 50;
@@ -354,59 +256,9 @@ function animate() {
 		// }
 
 		player._update(delta);
+		orc._Update(delta);
 
-		charRaycaster.ray.origin.copy(character.position);
-		charRaycaster.ray.origin.y += 0;
-
-		// let arrow = new THREE.ArrowHelper(
-		// 	charRaycaster.ray.direction,
-		// 	charRaycaster.ray.origin,
-		// 	8,
-		// 	0xff0000
-		// );
-		// scene.add(arrow);
-
-		if (character) {
-			findDirectionToPlayer();
-		}
-		const charIntersections = charRaycaster.intersectObjects(
-			scene.children,
-			false
-		);
-
-		const charOnObject = charIntersections.length > 0;
-
-		mixer.update(delta);
 		characterMixer.update(delta);
-
-		characterVelocity.x -= characterVelocity.x * 5.0 * delta;
-		characterVelocity.z -= characterVelocity.z * 5.0 * delta;
-
-		characterVelocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-		characterDirection.z = Number(forward) - Number(backward);
-		characterDirection.x = Number(left) - Number(right);
-		characterDirection.normalize();
-
-		if (forward || backward) {
-			characterVelocity.z -= characterDirection.z * 400 * delta;
-		}
-		if (left || right) {
-			characterVelocity.x -= characterDirection.x * 400 * delta;
-		}
-
-		if (charOnObject === true) {
-			characterVelocity.y = Math.max(0, characterVelocity.y);
-		}
-
-		character.position.z += -characterVelocity.z * delta;
-		character.position.x += -characterVelocity.x * delta;
-
-		if (charIntersections[0]) {
-			character.position.y = charIntersections[0]?.point.y + 8.85;
-		}
-
-		character.position.y += characterVelocity.y * delta;
 	}
 
 	prevTime = time;
@@ -442,6 +294,9 @@ document.addEventListener(
 				.addEventListener("finished", function () {
 					attackAnimationPlaying = false;
 				});
+			setTimeout(() => {
+				axeSwing.play();
+			}, 500);
 		}
 
 		pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -532,52 +387,4 @@ function generateHeight(width, height) {
 	}
 
 	return data;
-}
-
-function findDirectionToPlayer() {
-	let enemyPos = character.position;
-	let playerPos = player.camera.position;
-	enemyCenterPoint.set(enemyPos.x, enemyPos.y + 10, enemyPos.z);
-
-	animations["running"].action.play();
-	character.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-	let distance = enemyCenterPoint.distanceTo(playerPos);
-
-	if (enemyPos.x != playerPos.x || enemyPos.z != playerPos.z) {
-		if (enemyPos.x < playerPos.x) {
-			left = true;
-			right = false;
-		} else {
-			left = false;
-			right = true;
-		}
-		if (enemyPos.z < playerPos.z) {
-			forward = true;
-			backward = false;
-		} else {
-			forward = false;
-			backward = true;
-		}
-
-		if (distance < 30) {
-			attackTime += 5 * delta;
-
-			if (attackTime > 5) {
-				punchSound.play();
-				player.health -= 25;
-				healthBar.style.width = `${player.health * 2}px`;
-				attackTime = 0;
-			}
-
-			left = false;
-			right = false;
-			forward = false;
-			backward = false;
-			animations["attack"].action.play();
-			animations["running"].action.stop();
-		} else {
-			animations["attack"].action.stop();
-			attackTime = 0;
-		}
-	}
 }
