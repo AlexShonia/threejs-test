@@ -9,11 +9,11 @@ export default class Orc extends Enemy {
 		this.speed = 400;
 		this.damage = 25;
 		this.scene = scene;
-		this.loadModel();
+		this.loadModel("Orc.fbx", 0.2);
 		this.position = startingPosition;
 		this.player = player;
 		this.enemyCenterPoint = new THREE.Vector3();
-		this.attackTime;
+		this.attackTime = null;
 
 		this.punchSound = new Audio("/character/slapSound.ogg");
 		this.punchSound.volume = 0.1;
@@ -26,41 +26,14 @@ export default class Orc extends Enemy {
 		);
 	}
 
-	loadModel() {
-		const orcLoader = new FBXLoader();
-		orcLoader.load("Orc.fbx", (fbx) => {
-			fbx.scale.setScalar(0.2);
-			fbx.traverse((c) => {
-				c.castShadow = true;
-			});
-
-			this.model = fbx;
-			this.model.position.copy(this.position);
-			this.model.rotation.copy(this.rotation);
-
-			this.mixer = new THREE.AnimationMixer(fbx);
-			const animLoader = new FBXLoader();
-			animLoader.setPath("./character/");
-			this.loadAnimation(animLoader, "monster_running.fbx", "running");
-			this.loadAnimation(animLoader, "monster_attack.fbx", "attack");
-			this.loadAnimation(animLoader, "orc_death.fbx", "death");
-
-			this.scene.add(this.model);
-		});
+	loadAnimations() {
+		this.animLoader.setPath("./character/");
+		this.loadAnimation(this.animLoader, "monster_running.fbx", "running");
+		this.loadAnimation(this.animLoader, "monster_attack.fbx", "attack");
+		this.loadAnimation(this.animLoader, "orc_death.fbx", "death");
 	}
 
-	loadAnimation(animLoader, animation, name) {
-		animLoader.load(animation, (a) => {
-			const clip = a.animations[0];
-			const action = this.mixer.clipAction(clip);
-			this.animations[name] = {
-				clip: clip,
-				action: action,
-			};
-		});
-	}
-
-	findDirectionToPlayer(delta) {
+	enemyAI(delta) {
 		if (this.health > 0) {
 			let enemyPos = this.model.position;
 			let playerPos = this.player.camera.position;
@@ -109,63 +82,17 @@ export default class Orc extends Enemy {
 		}
 	}
 
-	_Update(delta) {
-		this.model.position.copy(this.position);
-		this.model.rotation.copy(this.rotation);
+	update(delta) {
+		this.genericUpdate(delta);
 
 		if (this.health <= 0) {
 			this.animations["death"].action.play();
 			this.animations["attack"].action.stop();
 			this.animations["running"].action.stop();
-            setTimeout(()=> {
-                this.position.y = -900
-            }, 2800)
+			setTimeout(() => {
+				this.position.y = -900;
+			}, 2800);
 		}
 
-		this.charRaycaster.ray.origin.copy(this.position);
-
-		if (this.model) {
-			this.findDirectionToPlayer(delta);
-		}
-		const charIntersections = this.charRaycaster.intersectObjects(
-			this.scene.children,
-			false
-		);
-
-		const charOnObject = charIntersections.length > 0;
-		this.mixer.update(delta);
-
-		this.characterVelocity.x -= this.characterVelocity.x * 5.0 * delta;
-		this.characterVelocity.z -= this.characterVelocity.z * 5.0 * delta;
-
-		this.characterVelocity.y -= 9.8 * 100.0 * delta; // 100.0 = mass
-
-		this.characterDirection.z =
-			Number(this.forward) - Number(this.backward);
-		this.characterDirection.x = Number(this.left) - Number(this.right);
-		this.characterDirection.normalize();
-
-		if (this.forward || this.backward) {
-			this.characterVelocity.z -= this.characterDirection.z * 400 * delta;
-		}
-		if (this.left || this.right) {
-			this.characterVelocity.x -= this.characterDirection.x * 400 * delta;
-		}
-
-		if (charOnObject === true) {
-			this.characterVelocity.y = Math.max(0, this.characterVelocity.y);
-		}
-
-		this.position.z += -this.characterVelocity.z * delta;
-		this.position.x += -this.characterVelocity.x * delta;
-
-		if (charIntersections[0]) {
-			this.position.y = charIntersections[0]?.point.y + 8.85;
-		}
-
-		this.position.y += this.characterVelocity.y * delta;
-		if (this.player.health <= 0) {
-			this.position.set(0, 940, -180);
-		}
 	}
 }

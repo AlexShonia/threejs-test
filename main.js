@@ -17,7 +17,6 @@ let vertices = [];
 
 let mraycaster;
 let animations = {};
-let playerSpeed = 400;
 let axe;
 let characterMixer;
 let attackAnimationPlaying = false;
@@ -50,15 +49,9 @@ function init() {
 		false
 	);
 	document.body.appendChild(renderer.domElement);
-	// fps and ms
 
 	stats = new Stats();
 	document.body.appendChild(stats.dom);
-
-	const fov = 60;
-	const aspect = window.innerWidth / window.innerHeight;
-	const near = 1.0;
-	const far = 3000;
 
 	scene = new THREE.Scene();
 
@@ -220,7 +213,7 @@ function init() {
 	generateTrees(
 		vertices.length / 3,
 		800,
-		"tree-op4.glb",
+		"normal_tree.glb",
 		scene,
 		vertices,
 		renderer
@@ -255,8 +248,8 @@ function animate() {
 		// 	console.log("camera: ", camera.rotation);
 		// }
 
-		player._update(delta);
-		orc._Update(delta);
+		player.update(delta);
+		orc.update(delta);
 
 		characterMixer.update(delta);
 	}

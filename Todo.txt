@@ -1,22 +1,16 @@
-+ Understand whats goin on
-+ add terrain
-+ fix movement on terrain
-+ add fps counter
-+ Add trees
-+ model your tree
-+ get better skybox 
 understand why are there minuses in character movement code
-+ add shadows
 break up the code into function&files
-add a way to increase speed while playing
-    scroll? or some keypress?
+    + add loadModel to enemy class
+    + move movement logic to enemy class
+
+combat
+    fix the hitbox or smth, its hard to hit 
+
+Diversify trees by having some without leaves
 improve your tree
-    + decrease leaves resolution
-        + more!
     improve visually
-    - Join both materials
-    + Join leaf meshes into single one
-    - Join tree and leaf into single mesh and bake a whole texture on them
+    remake it in pixel art style
+    chamowie tree ufro qvevit
 
 Optimizing models:
     use gltfpack
@@ -43,4 +37,19 @@ Big Fps Drop was caused by Terrain
 
 Does window.Math.random overwrite the random fro whole file?
 
-Diversify trees by having some without leaves
+Make your own goblin model
+    + goblin
+    + armor
+    + weapon
+    + texturing
+    + rigging
+    run animation
+        + add mixamo run
+        + fix the cloth clipping
+        + hunch him 
+        + fix arms animation
+        attach plate armor to rig
+        fix teeth
+    attack animation
+
+

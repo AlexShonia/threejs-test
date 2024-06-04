@@ -132,7 +132,7 @@ export default class Player extends Entity {
 		document.addEventListener("keyup", onKeyUp);
 	}
 
-	_update(delta) {
+	update(delta) {
 		// TODO: may be innficient checking healthbar every fame?
 		this.healthBar.style.width = `${this.health * 2}px`;
 		this.position.copy(this.camera.position);
