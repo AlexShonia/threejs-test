@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import Entity from "./entity";
-import { FBXLoader } from "three/examples/jsm/Addons.js";
+import { FBXLoader, GLTFLoader } from "three/examples/jsm/Addons.js";
 
 export default class Enemy extends Entity {
 	constructor() {
@@ -20,19 +20,36 @@ export default class Enemy extends Entity {
 	}
 
 	loadModel(name, scalar) {
-		const orcLoader = new FBXLoader();
-		orcLoader.load(name, (fbx) => {
-			fbx.scale.setScalar(scalar);
-			fbx.traverse((c) => {
+		const orcLoader = new GLTFLoader();
+		orcLoader.load(name, (glb) => {
+			glb.scene.scale.setScalar(scalar);
+			glb.scene.traverse((c) => {
 				c.castShadow = true;
 			});
+			console.log(glb);
+			this.box = new THREE.Box3();
+			// glb.scene.children[0].geometry.computeBoundingBox();
 
-			this.model = fbx;
+			this.model = glb.scene;
 			this.model.position.copy(this.position);
 			this.model.rotation.copy(this.rotation);
 
-			this.mixer = new THREE.AnimationMixer(fbx);
-			this.loadAnimations();
+			this.mixer = new THREE.AnimationMixer(glb.scene);
+			const attackClip = glb.animations[0];
+			const attackAction = this.mixer.clipAction(attackClip)	
+			
+			const runClip = glb.animations[1];
+			const runAction = this.mixer.clipAction(runClip)	
+			this.animations["attack"] = {
+				clip: attackClip,
+				action: attackAction
+			}
+			this.animations["running"] = {
+				clip: runClip,
+				action: runAction
+			}
+
+			// this.loadAnimations();
 			this.scene.add(this.model);
 		});
 	}
@@ -55,6 +72,13 @@ export default class Enemy extends Entity {
 		this.charRaycaster.ray.origin.copy(this.position);
 
 		if (this.model) {
+			// this.box.setFromObject(this.model.children[0], true)
+			this.box.setFromCenterAndSize(
+				this.position,
+				new THREE.Vector3(10, 40, 10)
+			);
+			const helper = new THREE.Box3Helper(this.box, 0xffff00);
+			this.scene.add(helper);
 			this.enemyAI(delta);
 		}
 

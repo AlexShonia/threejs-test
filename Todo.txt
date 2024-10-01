@@ -5,6 +5,7 @@ break up the code into function&files
 
 combat
     fix the hitbox or smth, its hard to hit 
+        maybe there is a check for if polygons are intersecting
 
 Diversify trees by having some without leaves
 improve your tree
@@ -43,13 +44,22 @@ Make your own goblin model
     + weapon
     + texturing
     + rigging
-    run animation
+    + run animation
         + add mixamo run
         + fix the cloth clipping
         + hunch him 
         + fix arms animation
-        attach plate armor to rig
-        fix teeth
+        + attach plate armor to rig
+        + fix teeth
+        + attach sword to hand
+        + move to center
     attack animation
+        + import mixamo
+        + attach animation
+        + fix the arm
+        + fix the cloth clipping
+
+    import model
+        fix textures
 
 

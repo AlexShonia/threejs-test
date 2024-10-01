@@ -9,7 +9,7 @@ export default class Orc extends Enemy {
 		this.speed = 400;
 		this.damage = 25;
 		this.scene = scene;
-		this.loadModel("Orc.fbx", 0.2);
+		this.loadModel("Goblin.glb", 20.2);
 		this.position = startingPosition;
 		this.player = player;
 		this.enemyCenterPoint = new THREE.Vector3();

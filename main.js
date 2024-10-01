@@ -1,5 +1,4 @@
 import * as THREE from "three";
-
 import { GLTFLoader, ImprovedNoise } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import generateTrees from "./src/world";
@@ -30,6 +29,7 @@ let aspectRatio;
 let orc;
 
 let frameCount = 0;
+let axeBoundingBox = new THREE.Box3();
 
 setupLoadingManager();
 init();
@@ -142,6 +142,7 @@ function init() {
 		axe = weapon.scene;
 		weapon.scene.position.y = player.camera.position.y;
 
+		weapon.scene.children[0].geometry.computeBoundingBox();
 		characterMixer = new THREE.AnimationMixer(weapon.scene);
 		const clip = weapon.animations[0];
 		const action = characterMixer.clipAction(clip);
@@ -230,6 +231,19 @@ function animate() {
 	stats.update();
 
 	if (player.controls.isLocked === true) {
+		// axeBoundingBox
+		// 	.copy(axe.children[0].geometry.boundingBox)
+		// 	.applyMatrix4(axe.children[0].matrixWorld);
+
+		axeBoundingBox.setFromCenterAndSize(
+			new THREE.Vector3(axe.position.x + 10, axe.position.y + 5, axe.position.z),
+			new THREE.Vector3(5, 5, 5)
+		);
+		// axeBoundingBox.setFromObject(axe.children[0], true)
+		const helper = new THREE.Box3Helper(axeBoundingBox, 0xffff00);
+
+		scene.add(helper);
+
 		let camdirection = new THREE.Vector3();
 		player.camera.getWorldDirection(camdirection);
 
